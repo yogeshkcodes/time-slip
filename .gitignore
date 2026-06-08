@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large, regenerable raw data (recreate with: python run_all.py)
+outputs/data/minutes.csv
+outputs/data/episodes.csv
+
+# Keep the small analysis outputs, figures and reports tracked so the repo is
+# browsable on GitHub without running anything.

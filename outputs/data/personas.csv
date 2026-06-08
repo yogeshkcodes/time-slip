@@ -1,0 +1,9 @@
+pid,sex,archetype,trait_self_control,neuroticism,conscientiousness,habit_strength,chronotype,caffeine_use,baseline_sleep_h,notif_rate,phone_away_policy,intercept
+P01,F,"early-career analyst, anxious night owl",0.42,0.78,0.55,0.8,0.82,0.6,6.3,9.0,0.15,-0.31619411603878966
+P02,M,"senior engineer, disciplined morning lark",0.86,0.3,0.82,0.28,0.18,0.5,7.6,5.0,0.75,0.0008128844330148829
+P03,F,"graduate student, intrinsically driven but procrastinates",0.55,0.58,0.6,0.74,0.7,0.7,6.8,7.0,0.3,-0.013342472083408536
+P04,M,"sales manager, meeting- and notification-heavy",0.5,0.45,0.58,0.66,0.45,0.8,6.9,18.0,0.1,0.06226873273785798
+P05,F,"freelance creative, flow-prone but boredom-sensitive",0.48,0.52,0.4,0.78,0.66,0.6,7.1,8.0,0.2,-0.059026246984117056
+P06,M,"rotating-shift worker, circadian-disrupted",0.58,0.5,0.62,0.55,0.5,0.9,6.0,7.0,0.4,-0.381367728161188
+P07,F,"parent with part-time work, fragmented day",0.62,0.6,0.7,0.6,0.4,0.6,6.2,11.0,0.25,-0.38386566961535484
+P08,M,"student athlete, well-rested, structured",0.72,0.38,0.68,0.5,0.35,0.4,8.0,8.0,0.55,-0.03010000987497541
