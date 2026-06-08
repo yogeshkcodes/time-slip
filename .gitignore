@@ -13,7 +13,10 @@ Thumbs.db
 
 # Large, regenerable raw data (recreate with: python run_all.py)
 outputs/data/minutes.csv
+outputs/data/minutes_sample.csv
 outputs/data/episodes.csv
+outputs/data/example_filled_log.csv
 
-# Keep the small analysis outputs, figures and reports tracked so the repo is
-# browsable on GitHub without running anything.
+# Keep the small analysis outputs, figures, reports and the trained production
+# model (outputs/model/) tracked so the repo is browsable and usable on GitHub
+# without running anything.

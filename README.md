@@ -26,20 +26,31 @@ science, then show an explainable-ML + counterfactual pipeline — using only
 
 ## What it does
 
-1. **Simulates** 8 contrasting people (no names; sex M/F) over 14 days at
-   1-minute resolution. Eleven internal states (boredom, stress, fatigue, hunger,
-   self-control reserve, phone urge, sleep/circadian, …) evolve under
-   literature-grounded dynamics and drive a per-minute **slip hazard**. Lapses
-   take one of five channels — phone, mind-wandering, task-switch, snack, social —
-   with heavy-tailed durations (the literal "time slip": a 2-min check becomes 25).
+1. **Simulates** a cohort of **36 people** (8 hand-built archetypes + 28
+   randomised members; no names; sex M/F) over **28 days** at 1-minute resolution
+   — **~0.9M logged minutes, ~34k slips** — with the realism stressors that make
+   it *hard*: heterogeneous self-report noise, slow habit/self-control drift over
+   the weeks, and disruption ("travel/sick") days. Eleven internal states evolve
+   under literature-grounded dynamics and drive a per-minute **slip hazard**;
+   lapses take one of five channels (phone, mind-wandering, task-switch, snack,
+   social) with heavy-tailed durations (the literal "time slip").
 
-2. **Predicts** a slip in the next 10 minutes from self-loggable features only
-   (held-out **ROC-AUC ≈ 0.71**, vs **0.62** for a notifications-only baseline —
-   internal states, not just pings, carry the signal).
+2. **Predicts** a slip in the next 10 minutes from self-loggable features only,
+   evaluated under two honest regimes:
+   - **Cold-start** (people the model has *never seen*): **ROC-AUC ≈ 0.76**.
+   - **Personalised** (known person, *future* days — the Obsidian case): **≈ 0.77**,
+     isotonic-calibrated.
+   - vs **≈ 0.60** for a notifications-only baseline — internal states, not just
+     pings, carry the signal. A **learning curve** shows accuracy plateauing after
+     ~15 people: the remaining gap to 1.0 is the *irreducible* randomness of the
+     exact minute a lapse starts, not a fixable error. The trained model is
+     **persisted** to `outputs/model/` for inference.
 
 3. **Recovers the causes** and checks itself:
-   - True vs recovered hazard coefficients: **Spearman 0.92**, 90% sign agreement.
-   - Per-person counterfactual "slip fingerprints" vs ground truth: **Spearman 0.85**.
+   - True vs recovered hazard coefficients: **Spearman 0.98**, 90% sign agreement.
+   - Per-person counterfactual "slip fingerprints" vs ground truth: **per-person
+     Spearman ≈ 0.75** (attribution uses an additive logistic surrogate — faithful
+     for counterfactuals — while XGBoost does the predicting).
 
 4. **Explains, per person**, what share of *their* lapses is attributable to each
    cause, when their focus tends to break (vigilance decrement, time-of-day), and
@@ -63,8 +74,9 @@ Distraction isn't one thing. The right lever is personal — see
 
 ```bash
 pip install -r requirements.txt
-python run_all.py            # ~25s; writes data, figures, reports to ./outputs/
+python run_all.py            # ~2 min; full cohort study -> data, figures, reports, model
 python analyze_me.py         # analyse a self-logged routine (example if no file)
+python obsidian_sync.py "C:/path/to/Vault" --init   # log routines in Obsidian
 ```
 
 Then read **`outputs/reports/findings.md`** and browse `outputs/figures/`.
@@ -89,6 +101,9 @@ python -m timeslip.schema       # write a blank self-logging template
 | `km_curve.png` | how long focus lasts before a slip |
 | `shap_summary.png` | feature drivers of next-10-min risk |
 | `model_performance.png` | ROC / PR / calibration vs baselines |
+| `learning_curve.png` | accuracy vs amount of data (then it plateaus) |
+| `regime_compare.png` | cold-start vs personalised accuracy |
+| `per_person_auc.png` | accuracy distribution across people |
 | `circadian_slips.png` | when slips happen across the day |
 | `channels.png` | slip types and the state behind each |
 | `day_timeline_P0*.png` | a representative day with state curves + slips |
@@ -119,29 +134,48 @@ It produces two levels (into `outputs/me/`):
 
 See `docs/DATA_DICTIONARY.md` and `timeslip/schema.py` for the schema.
 
+## Log in Obsidian — `obsidian_sync.py`
+
+Keep the whole loop inside your Obsidian vault:
+
+```bash
+python obsidian_sync.py "C:/path/to/Vault" --init   # scaffold a TimeSlip/ folder
+#   ... log your days as a markdown table in TimeSlip/logs/*.md (a template and
+#       an example are created for you; columns are mostly 1-5 scales) ...
+python obsidian_sync.py "C:/path/to/Vault"          # parse logs -> write report
+```
+
+It writes **`TimeSlip/Time Slip Report.md`** back into the vault with embedded
+charts (when/where/why you slip + your fingerprint), so you read your results in
+Obsidian. Re-run any time you add more days. See `TimeSlip/README.md` (created by
+`--init`) for the exact column format.
+
 ## Project structure
 
 ```
 Time Slip/
 ├─ run_all.py                end-to-end pipeline (the simulation study)
 ├─ analyze_me.py             analyse YOUR own logged routine
+├─ obsidian_sync.py          log routines in Obsidian, get a report back
 ├─ requirements.txt
 ├─ timeslip/
-│  ├─ config.py              constructs, ground-truth coefficients, channels
-│  ├─ personas.py            8 people: traits + sex (no names)
+│  ├─ config.py              constructs, ground-truth coefficients, cohort scale
+│  ├─ personas.py            archetypes + randomised cohort (traits + sex, no names)
 │  ├─ simulate.py            structural causal simulator (states → hazard → slips)
 │  ├─ features.py            self-loggable vs latent feature sets; risk windows
-│  ├─ model.py               risk model, baselines, coefficient recovery
+│  ├─ model.py               recovery, hazard, oracle + logistic attribution model
+│  ├─ evaluate.py            cold-start/personalised regimes, calibration, curves, persistence
 │  ├─ survival.py            Kaplan–Meier + discrete-time hazard + vigilance
 │  ├─ explain.py             SHAP + counterfactual fingerprints + validation
 │  ├─ schema.py              self-logging schema for real data
 │  ├─ realdata.py            analyse a real person's logged routine
+│  ├─ obsidian.py            parse vault logs + write report back into the vault
 │  └─ report.py              figures + per-person reports
 ├─ docs/
 │  ├─ THEORY.md              literature grounding + the causal DAG
 │  ├─ PAPER_OUTLINE.md       full manuscript scaffold + references
 │  └─ DATA_DICTIONARY.md     every column explained
-└─ outputs/                  generated data, figures, reports
+└─ outputs/                  generated data, figures, reports, model/
 ```
 
 ## Honest limitations (by design, reported in `findings.md`)

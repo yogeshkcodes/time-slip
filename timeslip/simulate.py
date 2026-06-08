@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 
 from . import config as C
-from .personas import Persona, build_personas
+from .personas import Persona, build_personas, build_cohort
 
 
 # --------------------------------------------------------------------------- #
@@ -116,6 +116,12 @@ def _weekend_agenda(p: Persona) -> List[str]:
             "chores", "leisure", "social", "dinner", "leisure", "wind_down"]
 
 
+def _disrupted_agenda() -> List[str]:
+    """A 'travel / sick / off' day: irregular, low-focus, more transit & rest."""
+    return ["morning_routine", "breakfast", "commute", "errands", "leisure",
+            "lunch", "social", "errands", "leisure", "dinner", "leisure", "wind_down"]
+
+
 @dataclass
 class DayPlan:
     wake_h: float
@@ -123,6 +129,7 @@ class DayPlan:
     is_weekend: bool
     deadline: float                 # day-level deadline pressure 0..1
     blocks: List[dict]              # each with absolute clock-minute start/end + attrs
+    is_event: bool = False          # disruption day (travel/sick/off)
 
 
 def _build_day_plan(p: Persona, day_idx: int, rng: np.random.Generator,
@@ -141,7 +148,13 @@ def _build_day_plan(p: Persona, day_idx: int, rng: np.random.Generator,
     if day_idx in crunch_days and not is_weekend:
         deadline = 0.7 + rng.uniform(0, 0.25)
 
-    agenda = _weekend_agenda(p) if is_weekend else _weekday_agenda(p)
+    # disruption ("event") day: travel / sick / unexpectedly off -> distribution shift
+    is_event = bool(C.HARD_MODE and rng.random() < C.HARD["event_day_prob"])
+    if is_event:
+        agenda = _disrupted_agenda()
+        deadline = min(deadline, 0.2)
+    else:
+        agenda = _weekend_agenda(p) if is_weekend else _weekday_agenda(p)
 
     cursor = wake_h * 60.0
     end_min = bed_h * 60.0
@@ -186,7 +199,7 @@ def _build_day_plan(p: Persona, day_idx: int, rng: np.random.Generator,
         cursor = finish
 
     return DayPlan(wake_h=wake_h, bed_h=bed_h, is_weekend=is_weekend,
-                   deadline=deadline, blocks=blocks)
+                   deadline=deadline, blocks=blocks, is_event=is_event)
 
 
 def _notif_rate_per_min(p: Persona, hour: float, social: str) -> float:
@@ -200,7 +213,7 @@ def _choose_channel(state: dict, p: Persona, rng: np.random.Generator) -> str:
     feats = {
         "urge_to_check": state["urge_eff"],
         "boredom": state["boredom"],
-        "habit_strength": p.habit_strength,
+        "habit_strength": state.get("habit_strength", p.habit_strength),
         "fatigue": state["fatigue"],
         "low_intrinsic": 1.0 - state["intrinsic"],
         "difficulty": state["difficulty"],
@@ -226,8 +239,9 @@ def _choose_channel(state: dict, p: Persona, rng: np.random.Generator) -> str:
 def _slip_duration(channel: str, state: dict, p: Persona, rng: np.random.Generator) -> int:
     d = C.CHANNEL_DURATION[channel]
     base = d["base"]
+    habit = state.get("habit_strength", p.habit_strength)
     if channel == "phone":               # rabbit-hole lengthening (variable reward)
-        base *= (1.0 + 1.6 * state["boredom"]) * (1.0 + 0.8 * p.habit_strength)
+        base *= (1.0 + 1.6 * state["boredom"]) * (1.0 + 0.8 * habit)
     elif channel == "social":
         base *= (1.0 + 0.8 * state["boredom"])
     dur = rng.lognormal(mean=np.log(max(1.0, base)), sigma=0.45)
@@ -252,6 +266,11 @@ def simulate_person(p: Persona, rng: np.random.Generator
     for day in range(C.N_DAYS):
         plan = _build_day_plan(p, day, rng, crunch_days)
 
+        # slow non-stationary drift in habit / self-control over the study window
+        frac = day / max(1, C.N_DAYS - 1)
+        habit_eff = clip01(p.habit_strength * (1.0 + p.drift * frac))
+        sc_eff = clip01(p.trait_self_control * (1.0 - 0.5 * p.drift * frac))
+
         # ---- overnight recovery -> starting states ----
         if prev_bed_h is not None:
             got = (24.0 - (prev_bed_h % 24)) + plan.wake_h if prev_bed_h % 24 > 12 \
@@ -263,15 +282,17 @@ def simulate_person(p: Persona, rng: np.random.Generator
 
         # shift worker carries chronic circadian-misalignment debt
         extra = 0.18 if (p.pid == "P06" and not plan.is_weekend) else 0.0
+        if plan.is_event:                       # travel/sick days start more depleted
+            extra += 0.10
         sleep_pressure = clip01(0.12 + 0.55 * sleep_debt + extra + rng.normal(0, 0.03))
         energy = clip01(0.88 - 0.35 * sleep_pressure)
         hunger = clip01(0.35 + rng.normal(0, 0.05))
         boredom = clip01(0.12 + rng.normal(0, 0.04))
         stress = clip01(0.18 + 0.25 * p.neuroticism + 0.35 * plan.deadline)
         mood = clip01(0.68 - 0.3 * stress + 0.2 * (1 - sleep_pressure))
-        focus_capacity = clip01(0.35 + 0.6 * p.trait_self_control)
+        focus_capacity = clip01(0.35 + 0.6 * sc_eff)
         focus_reserve = clip01(focus_capacity * (1 - 0.3 * sleep_pressure))
-        urge = clip01(0.15 * p.habit_strength)
+        urge = clip01(0.15 * habit_eff)
         recent_caffeine = 0.0
 
         # ---- flatten the day into per-minute context arrays ----
@@ -357,7 +378,7 @@ def simulate_person(p: Persona, rng: np.random.Generator
             mood = clip01(mood + 0.02 * (target_mood - mood))
 
             # -------- focus reserve (self-control capacity) --------
-            cap = clip01((0.35 + 0.6 * p.trait_self_control) * (1 - 0.3 * fatigue))
+            cap = clip01((0.35 + 0.6 * sc_eff) * (1 - 0.3 * fatigue))
             if focus:
                 focus_reserve = clip01(focus_reserve
                                        - 0.0016 * (0.4 + aversive) * (0.5 + urge))
@@ -367,7 +388,7 @@ def simulate_person(p: Persona, rng: np.random.Generator
             # -------- notifications + phone urge --------
             lam = _notif_rate_per_min(p, hour, b["social"])
             notif = int(rng.poisson(lam))
-            target_urge = p.habit_strength * (0.2 + 0.5 * boredom)
+            target_urge = habit_eff * (0.2 + 0.5 * boredom)
             urge = clip01(urge + 0.04 * (target_urge - urge))
             if notif > 0:
                 urge = clip01(urge + 0.40 * notif * rng.uniform(0.6, 1.0))
@@ -380,7 +401,7 @@ def simulate_person(p: Persona, rng: np.random.Generator
                 alertness=alertness, sleep_pressure=sleep_pressure, circadian=circadian,
                 urge=urge, urge_eff=urge_eff, intrinsic=intrinsic, difficulty=difficulty,
                 deadline=deadline, open_tasks=b["open_tasks"], social=b["social"],
-                phone_in_reach=b["phone_in_reach"],
+                phone_in_reach=b["phone_in_reach"], habit_strength=habit_eff,
             )
 
             # -------- slip hazard --------
@@ -433,14 +454,16 @@ def simulate_person(p: Persona, rng: np.random.Generator
                     urge = clip01(urge * 0.4)
                     time_on_task = 0
 
-            # measurement model: noisy self-logged subset (Likert-ish)
+            # measurement model: noisy self-logged subset (Likert-ish).
+            # noise level is per-person (heterogeneous reporters).
             def obs(v):
-                n = clip01(v + rng.normal(0, C.RNG_NOISE_OBSERVED))
+                n = clip01(v + rng.normal(0, p.obs_noise))
                 return round(n * 4) / 4.0           # 0,.25,.5,.75,1 ~ 1..5 Likert
 
             row = dict(
                 pid=p.pid, sex=p.sex, day=day, weekday=day % 7,
-                is_weekend=int(plan.is_weekend), clock_min=clock_min, hour=hour,
+                is_weekend=int(plan.is_weekend), is_event=int(plan.is_event),
+                clock_min=clock_min, hour=hour,
                 minutes_awake=minutes_awake, activity=b["activity"],
                 task_type=b["task_type"], difficulty=difficulty, intrinsic=intrinsic,
                 aversive=aversive, location=b["location"], social=b["social"],
@@ -473,10 +496,14 @@ def simulate_person(p: Persona, rng: np.random.Generator
     return minute_rows, episode_rows
 
 
-def simulate_all(seed: int = C.GLOBAL_SEED
+def simulate_all(seed: int = C.GLOBAL_SEED, n_people: int = None
                  ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     rng = np.random.default_rng(seed)
-    personas = build_personas(rng)
+    if n_people is None:
+        n_people = 8 if C.FAST_DEMO else C.COHORT_SIZE
+    personas = build_cohort(n_people, rng,
+                            obs_noise_range=C.HARD["obs_noise_range"],
+                            drift_max=C.HARD["habit_drift"] if C.HARD_MODE else 0.0)
     all_minutes: List[dict] = []
     all_eps: List[dict] = []
     for p in personas:

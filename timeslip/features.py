@@ -67,39 +67,28 @@ def _oracle_frame(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, float]]:
 
 
 def _add_temporal(df: pd.DataFrame) -> pd.DataFrame:
-    """Within-day rolling / recency features (no leakage from the future)."""
+    """Within-day rolling / recency features (vectorised; no future leakage)."""
     df = df.sort_values(["pid", "day", "clock_min"]).copy()
+    keys = [df["pid"], df["day"]]
     g = df.groupby(["pid", "day"], sort=False)
 
     # notifications in the trailing 15 minutes
-    df["notif_15"] = (g["notif"]
-                      .rolling(15, min_periods=1).sum()
+    df["notif_15"] = (g["notif"].rolling(15, min_periods=1).sum()
                       .reset_index(level=[0, 1], drop=True))
 
-    # cumulative slip onsets earlier in the day (shifted so it excludes "now")
+    # cumulative slip onsets earlier in the day (excludes "now")
     df["slips_today"] = g["slip_onset"].cumsum() - df["slip_onset"]
 
-    # minutes since the previous slip onset (within the day)
-    def _since_event(s: pd.Series) -> pd.Series:
-        out = np.empty(len(s)); last = -10_000; i = 0
-        for v in s.to_numpy():
-            out[i] = min(600, i - last) if last > -10_000 else 600
-            if v == 1:
-                last = i
-            i += 1
-        return pd.Series(out, index=s.index)
-    df["since_slip"] = g["slip_onset"].transform(_since_event)
+    # minutes since the previous slip onset (0 at an onset; 600 if none yet)
+    onset_clock = df["clock_min"].where(df["slip_onset"] == 1)
+    df["since_slip"] = (df["clock_min"] - onset_clock.groupby(keys).ffill()
+                        ).clip(upper=600).fillna(600)
 
-    # minutes since last meal (within the day)
-    def _since_meal(s: pd.Series) -> pd.Series:
-        out = np.empty(len(s)); last = 0; i = 0
-        for v in s.to_numpy():
-            if v == 1:
-                last = i
-            out[i] = i - last
-            i += 1
-        return pd.Series(out, index=s.index)
-    df["since_meal"] = g["is_meal"].transform(_since_meal)
+    # minutes since last meal (within the day; before any meal -> minutes awake)
+    meal_clock = df["clock_min"].where(df["is_meal"] == 1)
+    day_start = g["clock_min"].transform("first")
+    df["since_meal"] = (df["clock_min"] - meal_clock.groupby(keys).ffill()
+                        ).fillna(df["clock_min"] - day_start)
 
     # rolling mean of self-logged boredom/stress over trailing 20 min (trend)
     for col in ["boredom_obs", "stress_obs"]:

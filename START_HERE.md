@@ -19,9 +19,10 @@ where **we** secretly decide the rules of what causes distraction. Then we let t
 computer study these fake people's days and try to figure out the rules on its
 own. Because we already know the real rules, **we can grade the computer.**
 
-It scored about **92% right.** That's the whole point: once it can correctly
-reverse-engineer causes we planted in fake data, we can trust it to do the same on
-**real** data later (yours, or study participants').
+It scored about **98% right** (on a big, deliberately hard dataset of 36 people
+over 28 days — nearly a million logged minutes). That's the whole point: once it
+can correctly reverse-engineer causes we planted in fake data, we can trust it to
+do the same on **real** data later (yours, or study participants').
 
 > Think of it like a lie detector you first test on people you *know* are lying —
 > once it passes that test, you trust it on strangers.
@@ -58,19 +59,31 @@ you felt on a 1–5 scale, was your phone nearby, did you slip). It then shows
 have data yet? Just run `python analyze_me.py` with no file — it makes a realistic
 example so you can see exactly what you'd get.
 
+**Prefer Obsidian?** You can do the whole thing inside your notes:
+
+```
+python obsidian_sync.py "C:/path/to/your/Vault" --init   # makes a TimeSlip folder
+# ...log each day as a simple table in TimeSlip/logs/ (a template is provided)...
+python obsidian_sync.py "C:/path/to/your/Vault"          # writes a report back
+```
+
+It drops a **"Time Slip Report"** note (with charts) right into your vault.
+
 ---
 
 ## 3. What the results are and how to read them
 
 The system gives **four answers**:
 
-### (a) "Can it predict when you're about to slip?" → Yes, ~71%
+### (a) "Can it predict when you're about to slip?" → Yes, ~76–77%
 When you show it an "about-to-slip" moment and a "you're-fine" moment, it picks the
-risky one **71% of the time**. Random guessing is 50%. And just blaming
-notifications only gets 62% — so **most distraction comes from what's going on
-inside you, not just your phone buzzing.**
+risky one **~76% of the time even for people it has never seen before**, and **~77%
+once it knows you** (your own past days). Random guessing is 50%. Just blaming
+notifications only gets ~60% — so **most distraction comes from what's going on
+inside you, not just your phone buzzing.** (It can't hit 99% — *nobody* can predict
+the exact minute you'll glance away; that part is genuinely random.)
 
-### (b) "Did it find the real causes?" → Yes, 92% match
+### (b) "Did it find the real causes?" → Yes, 98% match
 This is the trust score. The one thing it *couldn't* untangle was "low mood" vs
 "stress" (too similar to tell apart) — and we report that honestly instead of
 hiding it.
@@ -124,7 +137,7 @@ fix depends on which one you mean.
 ---
 
 ### In one line
-**Build fake people with known rules → let the AI find the rules → grade it (92%)
+**Build fake people with known rules → let the AI find the rules → grade it (98%)
 → now trust it to explain real distraction, person by person.**
 
 (For the technical details, see [README.md](README.md) and [docs/THEORY.md](docs/THEORY.md).)

@@ -19,13 +19,18 @@ trustworthy?* We build a structural causal model of a day in which eleven
 internal psychological/physiological states evolve under literature-grounded
 dynamics and drive a per-minute lapse hazard; lapses take one of five channels
 (phone, mind-wandering, task-switch, snack, social) with heavy-tailed durations.
-From minute-level logs of eight contrasting people over a fortnight we train a
+From minute-level logs of a cohort of 36 people over four weeks (~0.9M minutes),
+with heterogeneous self-report noise, habit drift and disruption days, we train a
 gradient-boosted model that predicts a lapse within the next ten minutes from
-**self-loggable features only** (held-out ROC-AUC 0.71, versus 0.62 for a
-notifications-only baseline). Critically, because the generative coefficients are
-known, we show the pipeline recovers them (Spearman 0.92 between recovered and
-true hazard coefficients; 90% sign agreement) and recovers per-person
-counterfactual "slip fingerprints" (Spearman 0.85 against ground truth). The
+**self-loggable features only**. Under two honest regimes it reaches ROC-AUC 0.76
+on people the model has never seen (cold-start) and 0.77 on known people's future
+days (personalised, isotonic-calibrated), versus 0.60 for a notifications-only
+baseline; a learning curve plateaus after ~15 people. Critically, because the
+generative coefficients are known, we show the pipeline recovers them (Spearman
+0.98 between recovered and true hazard coefficients; 90% sign agreement) and
+recovers per-person counterfactual "slip fingerprints" (per-person Spearman 0.75
+against ground truth, using an additive logistic surrogate for faithful
+attribution). The
 analysis separates two questions the literature conflates — *what raises baseline
 lapse hazard* (boredom, depleted self-control) versus *what is most reducible at
 the moments people actually slip* (the phone pull, task aversiveness) — and shows
@@ -62,11 +67,15 @@ precondition for applying it to real self-tracked data.
 
 ## 3. Methods
 ### 3.1 Cohort and routines
-- Eight people (no names; sex M/F), spanning trait/context archetypes (disciplined
-  morning lark, anxious night owl, notification-heavy manager, fragmented-day
-  parent, rotating-shift worker, etc.). 14 days, 1-minute resolution, waking hours.
+- 36 people (no names; sex M/F): 8 hand-built archetypes (disciplined morning
+  lark, anxious night owl, notification-heavy manager, fragmented-day parent,
+  rotating-shift worker, …) + 28 randomised members sampled across the trait
+  space. 28 days, 1-minute resolution, waking hours (~0.9M minute-rows).
 - Activity schedules from role-specific agendas with weekday/weekend variation and
-  two high-deadline "crunch" days.
+  high-deadline "crunch" days.
+- Difficulty stressors (`config.HARD`): per-person heterogeneous self-report
+  noise, slow non-stationary drift in habit strength / self-control over the
+  window, and low-frequency disruption (travel/sick) days for distribution shift.
 ### 3.2 Structural causal model
 - State dynamics (Table: each state, its update rule, its references).
 - The per-minute logistic hazard and its coefficients (`config.HAZARD`).
@@ -75,34 +84,41 @@ precondition for applying it to real self-tracked data.
 ### 3.3 Measurement model
 - Latent states vs **self-logged** observations (Likert-discretised + Gaussian
   noise, σ=0.09). Deployed model restricted to self-loggable features.
-### 3.4 Models
-- Target: slip within next 10 min. Gradient-boosted trees; logistic and
-  notifications-only baselines. Split by day (no temporal leakage).
+### 3.4 Models & evaluation regimes
+- Target: slip within next 10 min. Gradient-boosted trees (XGBoost, early
+  stopping) vs logistic and notifications-only baselines.
+- Two regimes: **cold-start** (train/test split by *person* — unseen people) and
+  **personalised** (split by *day* — known people, future days). No leakage.
+- Isotonic calibration on a held-out slice; learning curve over #training people.
 - Discrete-time hazard (pooled logistic) with time-on-task terms → hazard ratios.
-- Kaplan–Meier attention-survival.
+- Kaplan–Meier attention-survival. Production model + calibrator persisted.
 ### 3.5 Causal recovery and attribution
 - Coefficient recovery: unpenalised logistic on latent inputs + person dummies vs
   true coefficients.
 - Counterfactual fingerprints: per-slip leave-one-cause-out risk reduction to the
-  person's calm baseline; normalised to shares.
+  person's calm baseline; normalised to shares. **Attribution uses an additive
+  logistic surrogate** (the true process is additive on the logit scale; tree
+  one-feature ablation is unfaithful, per-person Spearman ~0.25 vs ~0.75).
 - Validation: against the identical counterfactual computed on the true hazard.
 
 ## 4. Results
-- **Prediction:** ROC-AUC 0.71, PR-AUC 0.58 (base rate 0.32), Brier 0.20;
-  notifications-only ROC 0.62. (Fig. `model_performance.png`)
-- **Recovery:** Spearman 0.92, sign agreement 90%; low-mood the lone outlier.
+- **Prediction:** cold-start ROC-AUC 0.76 (PR 0.71); personalised ROC-AUC 0.77
+  (PR 0.71), Brier 0.182 → 0.175 after calibration; notifications-only ROC 0.60.
+  Learning curve plateaus ~15 people. (Figs. `model_performance.png`,
+  `regime_compare.png`, `learning_curve.png`, `per_person_auc.png`)
+- **Recovery:** Spearman 0.98, sign agreement 90%; low-mood the lone outlier.
   (Fig. `recovery_scatter.png`)
-- **Hazard / survival:** per-minute hazard AUC 0.71; HR>1 for phone urge, task
-  aversiveness, time-on-task, boredom, stress; HR<1 for self-control. Clear
+- **Hazard / survival:** discrete-time hazard during focus; HR>1 for phone urge,
+  task aversiveness, time-on-task, boredom, stress; HR<1 for self-control. Clear
   vigilance decrement. (Figs. `hazard_ratios.png`, `vigilance_curve.png`,
   `km_curve.png`)
-- **Fingerprints:** self-logged vs ground-truth Spearman 0.85 (per-person 0.71–0.90).
-  Population reducible-cause ranking: phone pull 34%, task aversiveness 28%, low
-  intrinsic motivation 11%, stress 10%, vigilance 7%, boredom 5%, hunger 5%,
-  fatigue ~0% (under-attributed). Per-person heterogeneity (e.g., manager → phone
-  pull 56%; disciplined lark → task aversiveness). (Figs.
-  `population_fingerprint.png`, `per_person_fingerprint.png`,
-  `attribution_validation.png`)
+- **Fingerprints:** self-logged vs ground-truth per-person Spearman 0.75 (latent-
+  input check 0.96). Population reducible-cause ranking: phone pull ~45%, low
+  intrinsic motivation ~16%, task aversiveness ~15%, stress ~10%, vigilance ~7%,
+  hunger ~4%, fatigue ~2%, boredom ~1% (last two under-attributed under noise).
+  Per-person heterogeneity (e.g., manager → phone pull dominant; disciplined lark
+  → task aversiveness). (Figs. `population_fingerprint.png`,
+  `per_person_fingerprint.png`, `attribution_validation.png`)
 - **When/how:** time-of-day pattern (post-lunch dip, evening rise); channel-by-state
   structure. (Figs. `circadian_slips.png`, `channels.png`, `day_timeline_*.png`)
 

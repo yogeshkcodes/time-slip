@@ -1,10 +1,12 @@
 """
 Persona definitions for *Time Slip*.
 
-We model eight people. None are named; each is identified by an opaque id
-(P01..P08), a sex label (M/F) and a short archetype describing their life
-context. Their *stable traits* are expressed on 0..1 scales chosen to map onto
-established individual-difference constructs:
+We model eight hand-built archetypes (``build_personas``); the study cohort
+(``build_cohort``) extends these with randomised members sampled across the trait
+space, for a larger, harder population. None are named; each is identified by an
+opaque id (P01..PNN), a sex label (M/F) and a short archetype describing their
+life context. Their *stable traits* are expressed on 0..1 scales chosen to map
+onto established individual-difference constructs:
 
   trait_self_control   Tangney, Baumeister & Boone (2004) Brief Self-Control Scale.
                        Higher -> larger, slower-depleting focus reserve.
@@ -50,6 +52,8 @@ class Persona:
     notif_rate: float           # notifications per hour (job-dependent base)
     phone_away_policy: float    # P(phone out of reach during focused work)
     intercept: float = 0.0      # random-effect intercept on the slip hazard
+    obs_noise: float = 0.09     # this person's self-report noise (heterogeneous)
+    drift: float = 0.0          # slow drift of habit/self-control over the period
 
     def to_row(self) -> Dict:
         return asdict(self)
@@ -94,3 +98,49 @@ def build_personas(rng: np.random.Generator) -> List[Persona]:
         )
         personas.append(p)
     return personas
+
+
+# job-flavour templates for the randomised cohort (notif rate, phone policy)
+_JOB_FLAVOURS = [
+    ("knowledge worker",        (5, 12),  (0.25, 0.75)),
+    ("manager / sales",         (12, 22), (0.05, 0.25)),
+    ("student",                 (6, 12),  (0.15, 0.45)),
+    ("creative / freelance",    (6, 12),  (0.15, 0.45)),
+    ("operations / shift",      (5, 10),  (0.30, 0.55)),
+    ("caregiver / part-time",   (8, 16),  (0.15, 0.40)),
+]
+
+
+def build_cohort(n: int, rng: np.random.Generator,
+                 obs_noise_range=(0.06, 0.16), drift_max=0.18):
+    """Return ``n`` people: the 8 fixed archetypes plus randomised draws.
+
+    Randomised members sample their traits from plausible ranges so the cohort
+    spans a realistic population rather than eight hand-picked points. Each
+    person also gets a heterogeneous self-report noise level and a small slow
+    drift in habit strength / self-control over the study window.
+    """
+    people = build_personas(rng)
+    for p in people:                      # give the archetypes realism knobs too
+        p.obs_noise = float(rng.uniform(*obs_noise_range))
+        p.drift = float(rng.uniform(-drift_max, drift_max))
+
+    for i in range(len(people), max(len(people), n)):
+        sex = "M" if rng.random() < 0.5 else "F"
+        job, notif_rng, away_rng = _JOB_FLAVOURS[rng.integers(len(_JOB_FLAVOURS))]
+        people.append(Persona(
+            pid=f"P{i+1:02d}", sex=sex, archetype=f"randomised cohort member ({job})",
+            trait_self_control=float(np.clip(rng.normal(0.6, 0.15), 0.28, 0.92)),
+            neuroticism=float(np.clip(rng.normal(0.5, 0.17), 0.15, 0.9)),
+            conscientiousness=float(np.clip(rng.normal(0.6, 0.15), 0.25, 0.92)),
+            habit_strength=float(np.clip(rng.normal(0.6, 0.16), 0.25, 0.95)),
+            chronotype=float(np.clip(rng.normal(0.5, 0.2), 0.12, 0.92)),
+            caffeine_use=float(np.clip(rng.normal(0.65, 0.18), 0.2, 0.98)),
+            baseline_sleep_h=float(np.clip(rng.normal(7.0, 0.7), 5.3, 8.6)),
+            notif_rate=float(rng.uniform(*notif_rng)),
+            phone_away_policy=float(rng.uniform(*away_rng)),
+            intercept=float(rng.normal(0.0, 0.25)),
+            obs_noise=float(rng.uniform(*obs_noise_range)),
+            drift=float(rng.uniform(-drift_max, drift_max)),
+        ))
+    return people[:n] if n >= 1 else people

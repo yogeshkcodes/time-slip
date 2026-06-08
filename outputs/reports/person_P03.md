@@ -6,21 +6,21 @@
 - Phone-habit strength: 0.74 | Chronotype: evening (0.70) | Baseline sleep: 6.8 h
 
 ## Behaviour over the fortnight
-- **485 slips** across 14 days (~34.6/day)
-- **~191 min/day** spent off-task in slips
-- Channel mix: mind_wandering 34%, task_switch 25%, phone 21%, social 11%, snack 9%
+- **908 slips** across 28 days (~32.4/day)
+- **~188 min/day** spent off-task in slips
+- Channel mix: mind_wandering 31%, phone 27%, task_switch 21%, social 11%, snack 10%
 
 ## What drives this person's slips (counterfactual attribution)
 | Cause | Share of reducible risk |
 |---|---|
-| Phone pull | 34% |
-| Task aversiveness | 31% |
-| Stress | 12% |
-| Low intrinsic motivation | 9% |
-| Time-on-task (vigilance) | 6% |
-| Hunger | 5% |
-| Boredom | 2% |
-| Fatigue | 0% |
+| Phone pull | 43% |
+| Task aversiveness | 18% |
+| Low intrinsic motivation | 15% |
+| Stress | 10% |
+| Time-on-task (vigilance) | 7% |
+| Hunger | 4% |
+| Fatigue | 2% |
+| Boredom | 1% |
 
 **Dominant trigger: Phone pull.** (Attribution agrees with ground truth at Spearman 0.79.)
 

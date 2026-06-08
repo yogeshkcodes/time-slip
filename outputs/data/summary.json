@@ -1,36 +1,30 @@
 {
-  "n_minutes": 102088,
-  "n_slips": 3547,
-  "n_people": 8,
+  "n_minutes": 917031,
+  "n_slips": 34316,
+  "n_people": 36,
+  "n_days": 28,
   "horizon_min": 10,
-  "metrics": {
-    "model_family": "XGBoost",
-    "target": "slip within next 10 min",
-    "n_train": 58395,
-    "n_test": 23585,
-    "test_positives": 7584,
-    "roc_auc": 0.7102397320170126,
-    "pr_auc": 0.5827281364684136,
-    "brier": 0.2012854665517807,
-    "base_rate": 0.32156031375874494,
-    "baseline_logit_roc": 0.7232090353266422,
-    "baseline_logit_pr": 0.5999830714951074,
-    "baseline_notif_roc": 0.6150055198290614,
-    "baseline_notif_pr": 0.3995510297046007
+  "cold_start": {
+    "roc_auc": 0.7623219561583822,
+    "pr_auc": 0.708661958314817,
+    "brier": 0.191980242729187,
+    "base_rate": 0.37356246303476376
   },
-  "recovery_spearman": 0.9151515151515152,
+  "personalised": {
+    "roc_auc": 0.770120829454957,
+    "pr_auc": 0.707798559416686,
+    "brier": 0.18198172748088837,
+    "base_rate": 0.3567933651873215
+  },
+  "calibration_brier_before": 0.18198172748088837,
+  "calibration_brier_after": 0.17496642470359802,
+  "notif_only_roc": 0.5985330700464504,
+  "recovery_spearman": 0.9757575757575757,
   "recovery_sign_agreement": 0.9,
-  "attribution_spearman_self_logged": 0.8508699633699633,
-  "attribution_spearman_oracle": 0.7567307692307692,
-  "hazard_auc": 0.7072345917285228,
-  "dominant_cause_per_person": {
-    "P04": "Phone pull",
-    "P05": "Phone pull",
-    "P01": "Phone pull",
-    "P08": "Phone pull",
-    "P02": "Task aversiveness",
-    "P03": "Phone pull",
-    "P07": "Phone pull",
-    "P06": "Task aversiveness"
-  }
+  "attribution_spearman_self_logged_flat": 0.7724657294768698,
+  "attribution_spearman_self_logged_per_person": 0.7513227513227513,
+  "attribution_spearman_oracle": 0.9574954084933831,
+  "hazard_auc": 0.6947172671226655,
+  "per_person_auc_cold_median": 0.762323783513161,
+  "per_person_auc_pers_median": 0.7655487797304624
 }

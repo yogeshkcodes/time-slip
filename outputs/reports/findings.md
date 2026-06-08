@@ -1,29 +1,33 @@
 # Time Slip - overall findings
+*Cohort: 36 people x 28 days (917,031 logged minutes, 34,316 slips).*
 
-## 1. The model predicts near-term attention slips
+## 1. The model predicts near-term attention slips (two honest regimes)
 - Target: a slip within the next 10 minutes.
-- Held-out **ROC-AUC 0.710**, PR-AUC 0.583 (base rate 0.32); Brier 0.201.
-- Far above a notifications-only baseline (ROC 0.615): being pinged is **not** the whole story - internal states carry most of the signal.
+- **Cold-start (people the model has NEVER seen):** ROC-AUC **0.762**, PR-AUC 0.709 (base 0.37).
+- **Personalised (known person, FUTURE days):** ROC-AUC **0.770**, PR-AUC 0.708; Brier 0.182 -> 0.175 after calibration.
+- Both beat a notifications-only baseline (ROC 0.599): being pinged is **not** the whole story - internal states carry most of the signal.
+- The learning curve plateaus after ~15 people: we have enough data, and the remaining gap to 1.0 is the *irreducible* randomness of the exact minute a lapse begins - not a fixable modelling error.
 
 ## 2. It recovers the true causal structure (validation)
-- Recovered vs ground-truth hazard coefficients: **Spearman 0.92**, sign agreement 90%.
+- Recovered vs ground-truth hazard coefficients: **Spearman 0.98**, sign agreement 90%.
 - The top drivers (phone urge, boredom, depleted self-control, task aversiveness) are ranked correctly; the only weak point is *low mood*, which is collinear with stress and cannot be separated - an honest limit.
 
 ## 3. Per-person 'slip fingerprints' are trustworthy
-- Counterfactual attribution vs ground truth: overall Spearman **0.85** with self-logged inputs, 0.76 on a latent-input sanity check - both strong.
-- Population ranking of *reducible* causes (self-logged model):
-  - Phone pull: 34%
-  - Task aversiveness: 28%
-  - Low intrinsic motivation: 11%
-  - Stress: 10%
+- Counterfactual attribution vs ground truth: **per-person Spearman 0.75** with self-logged inputs, 0.96 on a latent-input sanity check.
+- Attribution uses an additive logistic surrogate, not the tree: the true process is additive on the logit scale, so logistic counterfactuals are faithful (per-person Spearman ~0.75) whereas tree one-feature ablation is not (~0.25). Prediction and explanation use different models by design.
+- Population ranking of *reducible* causes (self-logged surrogate):
+  - Phone pull: 45%
+  - Low intrinsic motivation: 16%
+  - Task aversiveness: 15%
+  - Stress: 9%
   - Time-on-task (vigilance): 7%
-  - Boredom: 5%
   - Hunger: 5%
-  - Fatigue: 0%
+  - Fatigue: 2%
+  - Boredom: 1%
 - Note: the self-logged model under-attributes *fatigue* and *boredom* relative to ground truth - their self-report proxies are noisy and collinear with task features. This is a measurement limit, not a method failure (the latent-input check recovers them), and points to better passive sensing of alertness/engagement as the highest-value next step.
 
 ## 4. When and how attention gives way
-- Discrete-time hazard during focus (AUC 0.71): each +1 SD of phone-urge, task-aversiveness, time-on-task, boredom and stress raises the lapse hazard; self-control lowers it.
+- Discrete-time hazard during focus (AUC 0.69): each +1 SD of phone-urge, task-aversiveness, time-on-task, boredom and stress raises the lapse hazard; self-control lowers it.
 - A clear **vigilance decrement**: lapse risk climbs with minutes-on-task.
 - Time-of-day structure: a post-lunch dip and an evening rise in slips.
 

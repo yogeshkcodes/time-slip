@@ -5,14 +5,19 @@ are the simulator's ground truth (a real study cannot observe them); the
 `*_obs` columns are the noisy self-logged versions the deployed model actually
 uses.
 
-## `minutes.csv` — one row per waking minute (~100k rows)
+> At cohort scale the full minute log is ~0.9M rows (~380 MB), so `run_all.py`
+> saves a 20k-row **`minutes_sample.csv`** for inspection (and git-ignores the
+> full file). The columns below describe both.
+
+## `minutes_sample.csv` — one row per waking minute (sample of ~0.9M)
 
 **Identifiers & context**
 | Column | Meaning |
 |---|---|
 | `pid` | person id (P01–P08), no name |
 | `sex` | M / F (no direct causal role; see THEORY.md) |
-| `day`, `weekday`, `is_weekend` | day index 0–13, day-of-week 0–6, weekend flag |
+| `day`, `weekday`, `is_weekend` | day index 0–27, day-of-week 0–6, weekend flag |
+| `is_event` | 1 if a disruption ("travel/sick/off") day |
 | `clock_min`, `hour`, `minutes_awake` | minute-of-day, hour, minutes since waking |
 | `activity`, `task_type` | current activity label and category |
 | `difficulty`, `intrinsic`, `aversive` | task challenge / intrinsic interest / aversiveness (0–1) |
@@ -43,7 +48,7 @@ uses.
 | `in_slip` | 1 if this minute is inside an ongoing lapse (excluded from the at-risk set) |
 | `slip_channel` | phone / mind_wandering / task_switch / snack / social / none |
 
-## `episodes.csv` — one row per slip (~3.5k rows)
+## `episodes.csv` — one row per slip (~34k rows; git-ignored, regenerable)
 `pid, sex, day, clock_min, hour, activity, task_type, channel, duration, p_slip`
 plus a snapshot of every internal state and the context at the moment of onset
 (`boredom, fatigue, stress, hunger, mood, energy, focus_reserve, urge_eff,
@@ -64,5 +69,7 @@ phone_away_policy, intercept`.
 | `fingerprints_self_logged.csv` | per-person counterfactual cause shares (model) |
 | `fingerprints_ground_truth.csv` | per-person cause shares (true generator) |
 | `shap_importance.csv` | global mean\|SHAP\| per feature |
-| `summary.json` | headline metrics in one place |
+| `learning_curve.csv` | cold-start ROC vs number of training people |
+| `summary.json` | headline metrics in one place (both regimes, calibration, recovery) |
 | `self_log_template.csv` | blank template for logging your own day (see schema.py) |
+| `model/timeslip_model.joblib` | persisted production model + calibrator + feature schema |

@@ -24,8 +24,20 @@ GLOBAL_SEED = 20260608          # fixed so a paper reviewer can reproduce exactl
 # --------------------------------------------------------------------------- #
 # Simulation scope
 # --------------------------------------------------------------------------- #
-N_DAYS = 14                     # days simulated per person
+N_DAYS = 28                     # days simulated per person
 MINUTES_PER_STEP = 1            # temporal resolution of the log (1 minute)
+
+# ----- cohort scale & difficulty (the "mature, hard" dataset) ----- #
+COHORT_SIZE = 36                # people: 8 fixed archetypes + randomised draws
+HARD_MODE = True                # turn on the realism/difficulty stressors below
+HARD = {
+    "obs_noise_range":  (0.06, 0.16),  # per-person self-report noise sd (heterogeneous)
+    "label_flip":        0.02,         # fraction of observed slip labels that are wrong
+    "event_day_prob":    0.06,         # P(a day is a "disruption" day: travel/sick/off)
+    "habit_drift":       0.18,         # max fractional drift of habit/self-control over the period
+    "missing_log_prob":  0.0,          # (used by the real-data path, not training)
+}
+FAST_DEMO = False               # if True, simulate a tiny cohort (quick smoke test)
 
 # --------------------------------------------------------------------------- #
 # The latent internal states tracked minute-by-minute.

@@ -136,6 +136,28 @@ def train_oracle_model(fb: Dict) -> Dict:
     return dict(model=model, oracle_test_auc=auc)
 
 
+def train_attribution_model(fb: Dict, space: str = "real"):
+    """Additive (logistic) surrogate used ONLY for counterfactual attribution.
+
+    Prediction and explanation deliberately use different models. A gradient-
+    boosted tree gives the best discrimination, but tree-based one-feature
+    counterfactual ablation is unreliable for attribution (non-additive,
+    saturating). Because the true slip process is additive on the logit scale, a
+    standardised logistic regression yields faithful, monotonic per-feature
+    counterfactuals -- and recovers the true per-person cause ranking far better
+    (per-person Spearman ~0.75 vs ~0.25 for the tree). This is the model fed to
+    ``explain.counterfactual_attribution``; the XGBoost model remains the
+    predictor for the headline accuracy metrics.
+    """
+    X = fb["X_oracle"] if space == "oracle" else fb["X_real"]
+    y = fb["y_window"]
+    pipe = Pipeline([("sc", StandardScaler()),
+                     ("lr", LogisticRegression(max_iter=4000,
+                                               class_weight="balanced"))])
+    pipe.fit(X, y)
+    return pipe
+
+
 def recover_coefficients(fb: Dict) -> Dict:
     """Fit logistic on oracle features; compare to ground-truth HAZARD."""
     Xo = fb["X_oracle"].copy()

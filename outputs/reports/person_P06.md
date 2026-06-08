@@ -6,23 +6,23 @@
 - Phone-habit strength: 0.55 | Chronotype: intermediate (0.50) | Baseline sleep: 6.0 h
 
 ## Behaviour over the fortnight
-- **381 slips** across 14 days (~27.2/day)
-- **~148 min/day** spent off-task in slips
-- Channel mix: mind_wandering 36%, phone 19%, task_switch 17%, social 17%, snack 12%
+- **764 slips** across 28 days (~27.3/day)
+- **~154 min/day** spent off-task in slips
+- Channel mix: mind_wandering 34%, phone 23%, social 16%, task_switch 15%, snack 12%
 
 ## What drives this person's slips (counterfactual attribution)
 | Cause | Share of reducible risk |
 |---|---|
-| Task aversiveness | 30% |
-| Phone pull | 25% |
-| Low intrinsic motivation | 13% |
-| Stress | 11% |
+| Phone pull | 41% |
+| Low intrinsic motivation | 19% |
+| Task aversiveness | 15% |
+| Stress | 7% |
 | Time-on-task (vigilance) | 7% |
 | Hunger | 7% |
-| Boredom | 6% |
-| Fatigue | 0% |
+| Fatigue | 4% |
+| Boredom | 1% |
 
-**Dominant trigger: Task aversiveness.** (Attribution agrees with ground truth at Spearman 0.71.)
+**Dominant trigger: Phone pull.** (Attribution agrees with ground truth at Spearman 0.57.)
 
 ## Suggested intervention
-Attack procrastination at its source: pre-commit, break aversive tasks into small concrete first steps, and schedule them at high-alertness hours.
+Reduce cue availability and notification pressure: keep the phone out of reach during focus blocks (the simulator shows this sharply cuts phone-channel slips), batch notifications.
