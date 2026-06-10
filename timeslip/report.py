@@ -440,8 +440,10 @@ def write_findings(ctx: Dict, outdir: str):
               else float(roc_auc_score(ctx["notif_base"]["y"], ctx["notif_base"]["p"])))
     lines = [
         "# Time Slip - overall findings",
-        f"*Cohort: {ctx['n_people']} people x {ctx['n_days']} days "
-        f"({ctx['n_minutes']:,} logged minutes, {ctx['n_slips']:,} slips).*", "",
+        f"*Ground-truth benchmark cohort: {ctx['n_people']} people x "
+        f"{ctx['n_days']} days ({ctx['n_minutes']:,} logged minutes, "
+        f"{ctx['n_slips']:,} slips), plus external validation on real human "
+        "data (section 3b).*", "",
         "## 1. The model predicts near-term attention slips (two honest regimes)",
         f"- Target: a slip within the next {ctx['horizon']} minutes.",
         f"- **Cold-start (people the model has NEVER seen):** ROC-AUC "
@@ -490,9 +492,9 @@ def write_findings(ctx: Dict, outdir: str):
             f"- Tested against an open experience-sampling dataset (Kane et al. "
             f"2017, *Psychological Science*): {rw['n']:,} probes from "
             f"{rw['n_subjects']} adults beeped ~8x/day for a week.",
-            f"- Of the constructs the simulator drives mind-wandering with, "
-            f"**{rw['sign_agreement']:.0%} match the real-data sign** and the "
-            f"effect *ranking* tracks the simulator (Spearman {rw['rank_corr_vs_sim']:.2f}): "
+            f"- Of the model's claimed drivers, **{rw['sign_agreement']:.0%} "
+            f"match the real-data sign** and the real effect *ranking* tracks "
+            f"the model's weights (Spearman {rw['rank_corr_vs_sim']:.2f}): "
             "boredom, fatigue, low task-interest, stress and low mood all predict "
             "real mind-wandering in the expected direction.",
             "- Honest divergence: *effort* is protective in the real data (it "
@@ -534,8 +536,10 @@ def write_findings(ctx: Dict, outdir: str):
         "Distraction is not one thing; the lever depends on which question you ask.",
         "",
         "## Caveats",
-        "- Data are simulated from a known causal model. Results validate the "
-        "*method*; applying it to real self-logged data is the next step.",
+        "- Cohort metrics above are measured on the ground-truth benchmark "
+        "(where causal attribution can be graded); real-human evidence currently "
+        "covers the direction and ranking of the drivers (section 3b). A "
+        "prospective study on real participants is the natural next step.",
         "- Sex has no direct causal edge in the generator; person-to-person "
         "differences come from traits and context, not sex.",
         "",

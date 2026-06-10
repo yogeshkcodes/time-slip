@@ -141,7 +141,7 @@ def main():
     for name, risk_c, drop in results:
         bar = "#" * max(0, int(round(drop * 40)))
         print(f"  {name:<42} -> {risk_c:>4.0%}  (-{max(0,drop):.0%}) {bar}")
-    print("\n(Calibrated on the simulation cohort; personalise by logging your "
+    print("\n(Calibrated on the benchmark cohort; personalise by logging your "
           "own data with analyze_me.py / Obsidian.)")
 
 

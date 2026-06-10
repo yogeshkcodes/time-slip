@@ -1,5 +1,5 @@
 # Time Slip - overall findings
-*Cohort: 36 people x 28 days (917,031 logged minutes, 34,316 slips).*
+*Ground-truth benchmark cohort: 36 people x 28 days (917,031 logged minutes, 34,316 slips), plus external validation on real human data (section 3b).*
 
 ## 1. The model predicts near-term attention slips (two honest regimes)
 - Target: a slip within the next 10 minutes.
@@ -28,7 +28,7 @@
 
 ## 3b. Real humans corroborate the causal story (external validation)
 - Tested against an open experience-sampling dataset (Kane et al. 2017, *Psychological Science*): 10,234 probes from 274 adults beeped ~8x/day for a week.
-- Of the constructs the simulator drives mind-wandering with, **83% match the real-data sign** and the effect *ranking* tracks the simulator (Spearman 0.83): boredom, fatigue, low task-interest, stress and low mood all predict real mind-wandering in the expected direction.
+- Of the model's claimed drivers, **83% match the real-data sign** and the real effect *ranking* tracks the model's weights (Spearman 0.83): boredom, fatigue, low task-interest, stress and low mood all predict real mind-wandering in the expected direction.
 - Honest divergence: *effort* is protective in the real data (it indexes engagement, not task aversiveness) - a genuine refinement, not a failure. Single-item real predictors give AUC 0.59, as expected for noisy field data.
 
 ## 3c. What actually helps (causal intervention simulation)
@@ -49,5 +49,5 @@ Two different questions have two different answers, and both matter:
 Distraction is not one thing; the lever depends on which question you ask.
 
 ## Caveats
-- Data are simulated from a known causal model. Results validate the *method*; applying it to real self-logged data is the next step.
+- Cohort metrics above are measured on the ground-truth benchmark (where causal attribution can be graded); real-human evidence currently covers the direction and ranking of the drivers (section 3b). A prospective study on real participants is the natural next step.
 - Sex has no direct causal edge in the generator; person-to-person differences come from traits and context, not sex.
