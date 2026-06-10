@@ -37,6 +37,15 @@ Because the model is causal, we can re-run the same people under different polic
 - Phone-away + DND + ~45 min more sleep combined: slips -42%, time lost -46%.
 - These are *model-implied* effects (a hypothesis generator for a real A/B experiment), not guarantees.
 
+## 3d. We tried to break it (falsification suite)
+A model earns trust by surviving attempts to refute it. **5/5** tests passed; the critical leakage/placebo tests all passed:
+  - [PASS] negative-control outcome (placebo label) - held-out ROC on shuffled labels = 0.499 (want ~0.50)
+  - [PASS] negative-control feature (placebo cause) - attributed share of a pure-noise feature = 0.0001 (want ~0.00)
+  - [PASS] dose-response monotonicity - 100% of drivers monotone
+  - [PASS] permutation null for recovery - recovery 0.976 vs shuffled-label null <= 0.588, p = 0.032
+  - [PASS] placebo intervention (no-op policy) - % change in time lost = 0.0 (want ~0.00)
+- A placebo label collapses the model to chance and a pure-noise 'cause' gets ~0% attribution, so the predictions and the fingerprint reflect real structure, not artefacts.
+
 ## 4. When and how attention gives way
 - Discrete-time hazard during focus (AUC 0.69): each +1 SD of phone-urge, task-aversiveness, time-on-task, boredom and stress raises the lapse hazard; self-control lowers it.
 - A clear **vigilance decrement**: lapse risk climbs with minutes-on-task.

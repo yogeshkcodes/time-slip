@@ -34,7 +34,7 @@ most** — and it backs every claim with validation instead of vibes.
 The model predicts a slip in the next 10 minutes and decomposes *why* into a
 per-person **fingerprint** (phone pull, boredom, stress, fatigue, task
 aversiveness, hunger, time-on-task, low motivation). What makes it trustworthy
-is that it's validated **two independent ways**:
+is that it's validated **three independent ways** — and actively *attacked*:
 
 1. **Ground-truth benchmark.** Causal attribution can't be graded on field data
    (the true cause of a phone grab is unobservable), so the method is graded on
@@ -53,10 +53,20 @@ is that it's validated **two independent ways**:
    predicted direction: **83% sign agreement, rank-correlation 0.83**. (One
    genuine refinement: *effort* protects in real data — effort means engagement.)
 
+3. **Falsification ("we tried to break it").** Most behavioural-ML work only
+   shows evidence *for* a model; Time Slip ships a **refutation suite** that tries
+   to refute itself — and passes **5/5**. A *placebo label* drives the model to
+   chance (ROC 0.499); a *pure-noise "cause"* gets ~0% attribution (0.0001);
+   every driver shows a monotone *dose-response*; recovery beats a shuffled-label
+   *permutation null* (p≈0.03); and a *no-op intervention* yields ~0 effect. If
+   any of these failed, the headline numbers would be artefacts — they don't.
+
 And because the model is causal, it supports **intervention simulation** (a
 do-operator): re-running the same people under "notifications batched + phone
 away + slightly more sleep" cuts time lost to slips by **~46%** — a
 model-implied effect, i.e. a quantified hypothesis ready for a real A/B trial.
+Risk predictions ship with **Venn–Abers uncertainty intervals**, and population
+fingerprints with bootstrap confidence bands — so every number has an error bar.
 
 ## The conceptual punchline
 
@@ -92,6 +102,7 @@ Then read **`outputs/reports/findings.md`** and browse `outputs/figures/`.
 | File | Shows |
 |---|---|
 | `realworld_validation.png` | the drivers corroborated in 274 real people |
+| `falsification.png` | the 5 refutation tests the model survives |
 | `recovery_scatter.png` | recovered vs true causal coefficients (benchmark) |
 | `per_person_fingerprint.png` | each person's cause breakdown |
 | `interventions.png` | causal effect of phone-away / DND / sleep policies |
@@ -119,6 +130,28 @@ elevated at slip moments, and — once you have ≥30 rows / ≥6 slips — your
 personal fingerprint (cross-validated, shrunk toward the population prior while
 your data is small).
 
+## Embed it in your own project — `timeslip.api`
+
+A small, stable, JSON-friendly facade so any app (a focus timer, a journaling
+tool, a wearable companion, a study backend) can plug in:
+
+```python
+from timeslip.api import TimeSlip
+ts = TimeSlip()                                    # loads the trained model once
+
+ts.risk(boredom=4, task="deep_work", tot=40, phone=1, notifs=3)
+# -> {"risk": 0.97, "interval": [0.88, 0.99],
+#     "best_lever": {"name": "Make the task engaging / reframe it", ...},
+#     "levers": [...] }                            # ranked, with effect sizes
+
+ts.fingerprint("my_log.csv")     # -> per-cause share DataFrame (personal)
+ts.tracker("outputs/tracker")    # -> behavioural summary from tracked data
+```
+
+Everything returns plain dicts/DataFrames and runs locally — drop it into a
+Flask/FastAPI route, a notebook, or another pipeline unchanged. This is the
+intended **hook for sister projects**.
+
 ## Log in Obsidian — `obsidian_sync.py`
 
 ```bash
@@ -139,6 +172,8 @@ Time Slip/
 ├─ run_all.py                reproduce the full research study
 ├─ requirements.txt
 ├─ timeslip/
+│  ├─ api.py                 embeddable facade (risk / fingerprint / tracker)
+│  ├─ falsify.py             refutation suite (negative controls, dose-response)
 │  ├─ tracker.py             parse + analyse real tracker logs
 │  ├─ realworld.py           validation against real human ESM data (Kane 2017)
 │  ├─ realdata.py            personal-log analysis (+ empirical-Bayes shrinkage)

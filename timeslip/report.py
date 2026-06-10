@@ -179,9 +179,22 @@ def fig_shap(sh: Dict, outdir: str):
 def fig_population_fingerprint(cf: Dict, truth: pd.DataFrame, outdir: str):
     o = cf["overall"].set_index("cause")["share"]
     tr = (truth.mean()).reindex(o.index).fillna(0.0)
+    # bootstrap 95% CI of each cause's population share by resampling people
+    per = cf["per_person"].pivot(index="pid", columns="cause",
+                                 values="share").reindex(columns=o.index).fillna(0.0)
+    rng = np.random.default_rng(20260608)
+    n = len(per)
+    boot = np.array([per.iloc[rng.integers(0, n, n)].mean().values
+                     for _ in range(500)])
+    lo = np.percentile(boot, 2.5, axis=0)
+    hi = np.percentile(boot, 97.5, axis=0)
+    err = np.vstack([np.clip(o.values - lo, 0, None), np.clip(hi - o.values, 0, None)])
+
     fig, ax = plt.subplots(figsize=(11, 6))
     y = np.arange(len(o))
-    ax.barh(y - 0.2, o.values, height=0.4, color="#2e86ab", label="model (self-logged)")
+    ax.barh(y - 0.2, o.values, height=0.4, color="#2e86ab",
+            xerr=err, error_kw=dict(ecolor="#173a4d", capsize=3),
+            label="model (self-logged, 95% CI)")
     ax.barh(y + 0.2, tr.values, height=0.4, color="#f0a202", label="ground truth")
     ax.set_yticks(y); ax.set_yticklabels(o.index)
     ax.invert_yaxis()
@@ -334,6 +347,34 @@ def fig_realworld(rw: Dict, outdir: str):
                  f"{rw['n']:,} probes, {rw['n_subjects']} people; sign agreement "
                  f"{rw['sign_agreement']:.0%}, rank corr {rw['rank_corr_vs_sim']:.2f}")
     _save(fig, os.path.join(outdir, "realworld_validation.png"))
+
+
+def fig_falsify(fal: Dict, outdir: str):
+    if not fal:
+        return
+    rows = [r for r in fal["results"] if "value" in r or "p_value" in r]
+    names, vals, exps, passed = [], [], [], []
+    for r in fal["results"]:
+        names.append(r["test"].split("(")[0].strip())
+        passed.append(bool(r.get("passed")))
+        if "value" in r:
+            vals.append(r["value"]); exps.append(r.get("expected", ""))
+        elif "p_value" in r:
+            vals.append(round(r["p_value"], 3)); exps.append("p<0.05")
+        else:
+            vals.append(r.get("frac_monotone", 0.0)); exps.append(">=0.8 monotone")
+    fig, ax = plt.subplots(figsize=(11, 5.5))
+    y = np.arange(len(names))[::-1]
+    ax.barh(y, [1] * len(names),
+            color=["#76b041" if p else "#e4572e" for p in passed])
+    for yi, nm, v, ex, p in zip(y, names, vals, exps, passed):
+        ax.text(0.02, yi, f"{nm}", va="center", ha="left", fontsize=11)
+        ax.text(0.98, yi, f"{'PASS' if p else 'FAIL'}  ({v}, want {ex})",
+                va="center", ha="right", fontsize=10, color="white", weight="bold")
+    ax.set_yticks([]); ax.set_xticks([]); ax.set_xlim(0, 1)
+    ax.set_title("Falsification suite: trying to break the model "
+                 f"({fal['n_pass']}/{fal['n_total']} survived)")
+    _save(fig, os.path.join(outdir, "falsification.png"))
 
 
 def fig_per_person_auc(ctx: Dict, outdir: str):
@@ -518,6 +559,30 @@ def write_findings(ctx: Dict, outdir: str):
             "- These are *model-implied* effects (a hypothesis generator for a "
             "real A/B experiment), not guarantees.",
         ]
+    fal = ctx.get("falsify")
+    if fal:
+        lines += [
+            "",
+            "## 3d. We tried to break it (falsification suite)",
+            f"A model earns trust by surviving attempts to refute it. "
+            f"**{fal['n_pass']}/{fal['n_total']}** tests passed; the critical "
+            "leakage/placebo tests "
+            f"{'all passed' if fal['all_critical_pass'] else 'FAILED'}:",
+        ]
+        for r in fal["results"]:
+            mark = "PASS" if r.get("passed") else "FAIL"
+            if "value" in r:
+                detail = f"{r['metric']} = {r['value']} (want {r['expected']})"
+            elif "p_value" in r:
+                detail = (f"recovery {r['recovery']} vs shuffled-label null "
+                          f"<= {r['null_max']}, p = {r['p_value']:.3f}")
+            else:
+                detail = f"{r.get('frac_monotone', 0):.0%} of drivers monotone"
+            lines.append(f"  - [{mark}] {r['test']} - {detail}")
+        lines.append(
+            "- A placebo label collapses the model to chance and a pure-noise "
+            "'cause' gets ~0% attribution, so the predictions and the fingerprint "
+            "reflect real structure, not artefacts.")
     lines += [
         "",
         "## 4. When and how attention gives way",
@@ -572,6 +637,7 @@ def generate_all(ctx: Dict, fig_dir: str, rep_dir: str):
     fig_per_person_auc(ctx, fig_dir)
     fig_interventions(ctx.get("interventions"), fig_dir)
     fig_realworld(ctx.get("realworld"), fig_dir)
+    fig_falsify(ctx.get("falsify"), fig_dir)
 
     write_person_reports(ctx, rep_dir)
     write_findings(ctx, rep_dir)

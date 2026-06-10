@@ -43,15 +43,15 @@ def main():
     for d in (DATA, FIG, REP, MODEL):
         os.makedirs(d, exist_ok=True)
 
-    print("[1/8] simulating cohort ...")
+    print("[1/10] simulating cohort ...")
     minutes, episodes, personas = simulate_all(seed=C.GLOBAL_SEED)
     print(f"      {len(minutes):,} minute-rows, {len(episodes):,} slips, "
           f"{len(personas)} people, {minutes['day'].nunique()} days")
 
-    print("[2/8] engineering features ...")
+    print("[2/10] engineering features ...")
     fb = build_features(minutes, personas)
 
-    print("[3/8] evaluating model (cold-start + personalised) ...")
+    print("[3/10] evaluating model (cold-start + personalised) ...")
     cold = regime_cold_start(fb)
     pers = regime_personalized(fb)
     cal = calibrate(pers["model"].predict_proba(pers["val"][0])[:, 1], pers["val"][1],
@@ -65,23 +65,23 @@ def main():
           f"personalised ROC={pers['metrics']['roc_auc']:.3f} | "
           f"notif-only ROC={roc_auc_score(notif_base['y'], notif_base['p']):.3f}")
 
-    print("[4/8] learning curve + production model ...")
+    print("[4/10] learning curve + production model ...")
     lc = learning_curve(fb)
     prod = train_production_model(fb)
 
-    print("[5/8] recovering causal coefficients ...")
+    print("[5/10] recovering causal coefficients ...")
     rec = recover_coefficients(fb)
     odds = fit_discrete_hazard(fb)
     print(f"      Spearman(recovered,true)={rec['spearman']:.3f}  "
           f"sign-agreement={rec['sign_agreement']:.0%}")
 
-    print("[6/8] survival / hazard analysis ...")
+    print("[6/10] survival / hazard analysis ...")
     spells = build_spells(fb["at_risk"])
     km = km_curves(spells)
     haz = fit_discrete_time_hazard(fb["at_risk"])
     vc = vigilance_curve(fb["at_risk"])
 
-    print("[7/8] counterfactual attribution + SHAP ...")
+    print("[7/10] counterfactual attribution + SHAP ...")
     truth = ground_truth_attribution(fb)
     # attribution uses an additive logistic surrogate (faithful counterfactuals);
     # the XGBoost model above remains the predictor for accuracy.
@@ -102,7 +102,7 @@ def main():
     save_artifacts(prod, os.path.join(MODEL, "timeslip_model.joblib"))
     print(f"      saved production model -> {os.path.join(MODEL, 'timeslip_model.joblib')}")
 
-    print("[8/9] interventions + real-human-data validation ...")
+    print("[8/10] interventions + real-human-data validation ...")
     from timeslip.interventions import run_policies
     interventions = run_policies()
     print(f"      intervention 'all' -> slips {interventions.loc['all','slips_change_%']:+.0f}%, "
@@ -117,6 +117,13 @@ def main():
     except Exception as ex:
         print(f"      (real-data validation skipped: {ex})")
 
+    print("[9/10] falsification suite (negative controls, placebos, dose-response) ...")
+    from timeslip.falsify import run_all_tests
+    falsify = run_all_tests(fb)
+    print(f"      {falsify['n_pass']}/{falsify['n_total']} refutation tests passed; "
+          f"critical leakage/placebo tests: "
+          f"{'ALL PASS' if falsify['all_critical_pass'] else 'FAILED'}")
+
     ctx = dict(
         minutes=minutes, episodes=episodes, personas=personas,
         horizon=fb["horizon_min"], n_people=int(len(personas)),
@@ -128,9 +135,10 @@ def main():
         truth=truth, cf_real=cf_real, cf_oracle=cf_oracle,
         val_real=val_real, val_oracle=val_oracle, attr_per_person_mean=pp_mean,
         shap=sh, interventions=interventions, realworld=realworld,
+        falsify=falsify,
     )
 
-    print("[9/9] writing data, figures, reports ...")
+    print("[10/10] writing data, figures, reports ...")
     # the full minute log is huge at cohort scale -> save a sample for inspection
     minutes.sample(n=min(20000, len(minutes)), random_state=C.GLOBAL_SEED) \
         .sort_values(["pid", "day", "clock_min"]) \
@@ -170,6 +178,8 @@ def main():
         realworld_rank_corr=(None if realworld is None
                              else realworld["rank_corr_vs_sim"]),
         intervention_all_time_change_pct=float(interventions.loc["all", "time_change_%"]),
+        falsification_pass=f"{falsify['n_pass']}/{falsify['n_total']}",
+        falsification_critical_pass=bool(falsify["all_critical_pass"]),
     )
     with open(os.path.join(DATA, "summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, default=float)

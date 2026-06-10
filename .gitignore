@@ -22,6 +22,13 @@ outputs/tracker/
 outputs/tracker_demo/
 outputs/external/
 
+# PERSONAL / THIRD-PARTY DATA — never commit
+outputs/tracker/          # your real window titles + idle times (private!)
+outputs/tracker_report/   # report generated from your real behaviour
+outputs/tracker_demo/     # synthetic demo tracker
+outputs/external/         # downloaded third-party datasets (e.g. Kane 2017 ESM)
+outputs/me/               # reports built from your own logged data
+
 # Keep the small analysis outputs, figures, reports and the trained production
 # model (outputs/model/) tracked so the repo is browsable and usable on GitHub
 # without running anything.

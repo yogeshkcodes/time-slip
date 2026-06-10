@@ -44,8 +44,15 @@ Claiming to know *causes* is a big claim, so it's graded two ways:
    the model says — **83% agreement**. Fun wrinkle for your paper: *effort*
    turned out to be protective — putting in effort means you're engaged.
 
-So: the method finds the right answers where answers are checkable, and real
-humans behave the way it predicts. That's the trust story.
+3. **It tries to break itself.** The project ships a "refutation suite" — five
+   tests designed to *catch* a model that's secretly cheating (feed it scrambled
+   answers, a fake cause, a do-nothing change…). A fooled model fails them; this
+   one passes **5/5**. That's the difference between "looks impressive" and
+   "actually holds up."
+
+So: the method finds the right answers where answers are checkable, real humans
+behave the way it predicts, and it survives deliberate attempts to break it.
+That's the trust story — and it's stronger than almost anything in this space.
 
 ## 3. How you actually use it
 

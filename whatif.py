@@ -20,58 +20,10 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-import numpy as np
 import pandas as pd
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(ROOT, "outputs", "model", "timeslip_model.joblib")
-
-FOCUS_TASKS = {"deep_work", "study", "admin", "meeting", "shift_work"}
-
-
-def lk(x: float) -> float:
-    """1-5 Likert -> 0-1 model scale."""
-    return (float(x) - 1.0) / 4.0
-
-
-def build_row(a, columns) -> pd.DataFrame:
-    focus = 1 if a.task in FOCUS_TASKS else 0
-    tot = float(a.tot)
-    vig = min(tot / 60.0, 2.0) if focus else min(0.5, tot / 120.0)
-    hour = a.hour
-    row = {
-        "boredom_obs": lk(a.boredom), "stress_obs": lk(a.stress),
-        "energy_obs": lk(a.energy), "hunger_obs": lk(a.hunger),
-        "alertness_obs": lk(a.alertness),
-        "boredom_obs_roll20": lk(a.boredom), "stress_obs_roll20": lk(a.stress),
-        "difficulty": lk(a.difficulty), "intrinsic": lk(a.intrinsic),
-        "aversive": lk(a.aversive), "deadline": lk(a.deadline),
-        "open_tasks": a.open_tasks, "focus": focus, "is_meal": 0, "is_break": 0,
-        "phone_in_reach": a.phone, "minutes_awake": max(0.0, (hour - 7.0) * 60),
-        "time_on_task": tot, "vigilance": vig, "notif": min(a.notifs, 2),
-        "notif_15": a.notifs, "slips_today": a.slips_today, "since_slip": 600.0,
-        "since_meal": a.since_meal, "hour_sin": np.sin(2 * np.pi * hour / 24),
-        "hour_cos": np.cos(2 * np.pi * hour / 24), "sex_M": 0.5,
-        "trait_self_control": 0.5, "neuroticism": 0.5, "conscientiousness": 0.5,
-        "habit_strength": 0.5, "chronotype": 0.5, "caffeine_use": 0.5,
-        f"task_type_{a.task}": 1.0, "location_office": 1.0, "social_alone": 1.0,
-    }
-    X = pd.DataFrame([row]).reindex(columns=columns, fill_value=0.0)
-    return X
-
-
-LEVERS = {
-    "Phone away + notifications off": {"phone_in_reach": 0.0, "notif": 0.0,
-                                       "notif_15": 0.0},
-    "Take a break now (reset time-on-task)": {"time_on_task": 0.0, "vigilance": 0.0},
-    "Eat something": {"hunger_obs": 0.25, "since_meal": 0.0},
-    "Switch to / reframe as an engaging task": {"intrinsic": 0.75,
-                                                "aversive": 0.25},
-    "Down-regulate stress (breathing, walk)": {"stress_obs": 0.25,
-                                               "stress_obs_roll20": 0.25},
-    "Boost alertness (rest, light, caffeine)": {"alertness_obs": 0.75,
-                                                "energy_obs": 0.75},
-}
 
 
 def main():
@@ -109,38 +61,27 @@ def main():
 
     if not os.path.exists(MODEL_PATH):
         sys.exit("No trained model found. Run `python run_all.py` once first.")
-    import joblib
-    prod = joblib.load(MODEL_PATH)
-
-    X = build_row(a, prod["columns"])
-    raw = float(prod["model"].predict_proba(X)[:, 1][0])
-    risk = float(prod["iso"].transform([raw])[0])
+    from timeslip.api import TimeSlip
+    ts = TimeSlip(MODEL_PATH)
+    r = ts.risk(boredom=a.boredom, stress=a.stress, energy=a.energy,
+                hunger=a.hunger, alertness=a.alertness, difficulty=a.difficulty,
+                intrinsic=a.intrinsic, aversive=a.aversive, deadline=a.deadline,
+                task=a.task, phone=a.phone, notifs=a.notifs, tot=a.tot,
+                hour=a.hour, open_tasks=a.open_tasks, slips_today=a.slips_today,
+                since_meal=a.since_meal)
 
     interval = ""
-    if "cal_scores" in prod:
-        from timeslip.evaluate import venn_abers_interval
-        lo, hi = venn_abers_interval(prod["cal_scores"], prod["cal_y"], raw)
+    if r["interval"]:
+        lo, hi = r["interval"]
         interval = f"  (Venn-Abers interval {lo:.0%}-{hi:.0%})"
-
-    print(f"\nRisk of an attention slip in the next {prod['horizon']} min: "
-          f"**{risk:.0%}**{interval}")
-
-    # levers
-    results = []
-    for name, mods in LEVERS.items():
-        Xc = X.copy()
-        for col, val in mods.items():
-            if col in Xc.columns:
-                Xc[col] = val
-        raw_c = float(prod["model"].predict_proba(Xc)[:, 1][0])
-        risk_c = float(prod["iso"].transform([raw_c])[0])
-        results.append((name, risk_c, risk - risk_c))
-    results.sort(key=lambda r: r[2], reverse=True)
+    print(f"\nRisk of an attention slip in the next {r['horizon_min']} min: "
+          f"**{r['risk']:.0%}**{interval}")
 
     print("\nWhat would help most right now:")
-    for name, risk_c, drop in results:
-        bar = "#" * max(0, int(round(drop * 40)))
-        print(f"  {name:<42} -> {risk_c:>4.0%}  (-{max(0,drop):.0%}) {bar}")
+    for lev in r["levers"]:
+        bar = "#" * max(0, int(round(lev["reduction"] * 40)))
+        print(f"  {lev['name']:<42} -> {lev['new_risk']:>4.0%}  "
+              f"(-{lev['reduction']:.0%}) {bar}")
     print("\n(Calibrated on the benchmark cohort; personalise by logging your "
           "own data with analyze_me.py / Obsidian.)")
 

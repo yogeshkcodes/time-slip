@@ -29,5 +29,7 @@
   "per_person_auc_pers_median": 0.7655487797304624,
   "realworld_sign_agreement": 0.8333333333333334,
   "realworld_rank_corr": 0.8285714285714287,
-  "intervention_all_time_change_pct": -46.12
+  "intervention_all_time_change_pct": -46.12,
+  "falsification_pass": "5/5",
+  "falsification_critical_pass": true
 }
