@@ -28,16 +28,17 @@ Standardised gap between slip moments and focused moments (positive = higher whe
 
 ## Your personal fingerprint (model-based)
 - Personal risk model trained on your data (cross-validated AUC 0.76 — 0.50 is chance).
+- Shares are shrunk toward the population fingerprint (personal weight 97% — grows as you log more slips).
 
 | Cause | Share of your reducible slip risk |
 |---|---|
-| Phone pull | 68% |
+| Phone pull | 67% |
 | Task aversiveness | 18% |
 | Low intrinsic motivation | 7% |
 | Hunger | 5% |
 | Fatigue | 1% |
-| Boredom | 1% |
 | Stress | 1% |
+| Boredom | 1% |
 | Time-on-task (vigilance) | 0% |
 
 **Your dominant trigger: Phone pull.**

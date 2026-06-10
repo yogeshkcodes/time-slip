@@ -68,8 +68,6 @@ def main():
     print("[4/8] learning curve + production model ...")
     lc = learning_curve(fb)
     prod = train_production_model(fb)
-    save_artifacts(prod, os.path.join(MODEL, "timeslip_model.joblib"))
-    print(f"      saved production model -> {os.path.join(MODEL, 'timeslip_model.joblib')}")
 
     print("[5/8] recovering causal coefficients ...")
     rec = recover_coefficients(fb)
@@ -98,6 +96,27 @@ def main():
     print(f"      attribution fidelity (self-logged): per-person Spearman={pp_mean:.3f} "
           f"| latent-input check={val_oracle['overall']:.3f}")
 
+    # stash the population fingerprint in the artifact (used as the shrinkage
+    # prior when personalising on small real logs), then persist
+    prod["population_fingerprint"] = cf_real["overall"][["cause", "share"]].copy()
+    save_artifacts(prod, os.path.join(MODEL, "timeslip_model.joblib"))
+    print(f"      saved production model -> {os.path.join(MODEL, 'timeslip_model.joblib')}")
+
+    print("[8/9] interventions + real-human-data validation ...")
+    from timeslip.interventions import run_policies
+    interventions = run_policies()
+    print(f"      intervention 'all' -> slips {interventions.loc['all','slips_change_%']:+.0f}%, "
+          f"time {interventions.loc['all','time_change_%']:+.0f}%")
+    realworld = None
+    try:
+        from timeslip.realworld import validate as rw_validate
+        realworld = rw_validate()
+        print(f"      real-data (Kane 2017) sign agreement "
+              f"{realworld['sign_agreement']:.0%}, rank corr "
+              f"{realworld['rank_corr_vs_sim']:.2f}")
+    except Exception as ex:
+        print(f"      (real-data validation skipped: {ex})")
+
     ctx = dict(
         minutes=minutes, episodes=episodes, personas=personas,
         horizon=fb["horizon_min"], n_people=int(len(personas)),
@@ -108,10 +127,10 @@ def main():
         spells=spells, km=km, hazard=haz, vigilance=vc,
         truth=truth, cf_real=cf_real, cf_oracle=cf_oracle,
         val_real=val_real, val_oracle=val_oracle, attr_per_person_mean=pp_mean,
-        shap=sh,
+        shap=sh, interventions=interventions, realworld=realworld,
     )
 
-    print("[8/8] writing data, figures, reports ...")
+    print("[9/9] writing data, figures, reports ...")
     # the full minute log is huge at cohort scale -> save a sample for inspection
     minutes.sample(n=min(20000, len(minutes)), random_state=C.GLOBAL_SEED) \
         .sort_values(["pid", "day", "clock_min"]) \
@@ -125,6 +144,9 @@ def main():
     cf_real["per_person"].to_csv(os.path.join(DATA, "fingerprints_self_logged.csv"), index=False)
     truth.to_csv(os.path.join(DATA, "fingerprints_ground_truth.csv"))
     lc.to_csv(os.path.join(DATA, "learning_curve.csv"), index=False)
+    interventions.to_csv(os.path.join(DATA, "interventions.csv"))
+    if realworld is not None:
+        realworld["table"].to_csv(os.path.join(DATA, "realworld_validation.csv"), index=False)
     if sh.get("available"):
         sh["global_importance"].to_csv(os.path.join(DATA, "shap_importance.csv"), index=False)
 
@@ -143,6 +165,11 @@ def main():
         hazard_auc=haz.get("auc"),
         per_person_auc_cold_median=float(cold["per_person_auc"].median()),
         per_person_auc_pers_median=float(pers["per_person_auc"].median()),
+        realworld_sign_agreement=(None if realworld is None
+                                  else realworld["sign_agreement"]),
+        realworld_rank_corr=(None if realworld is None
+                             else realworld["rank_corr_vs_sim"]),
+        intervention_all_time_change_pct=float(interventions.loc["all", "time_change_%"]),
     )
     with open(os.path.join(DATA, "summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, default=float)

@@ -158,7 +158,12 @@ def learning_curve(fb: Dict, points: List[int] = None) -> pd.DataFrame:
 
 
 def train_production_model(fb: Dict) -> Dict:
-    """Final model on ALL data + isotonic calibrator + feature schema, for deploy."""
+    """Final model on ALL data + isotonic calibrator + feature schema, for deploy.
+
+    The artifact also stashes a (subsampled) calibration set so downstream tools
+    can compute Venn-Abers risk intervals, and per-feature reference quantiles
+    for drift checks on incoming real data.
+    """
     X, y, meta = fb["X_real"], fb["y_window"], fb["meta"]
     day = meta["day"].to_numpy()
     cut = day.max()
@@ -166,10 +171,33 @@ def train_production_model(fb: Dict) -> Dict:
     tr = ~va
     model = _make_model(_spw(y[tr]))
     _fit(model, X[tr], y[tr], X[va], y[va])
+    p_va = model.predict_proba(X[va])[:, 1]
     iso = IsotonicRegression(out_of_bounds="clip")
-    iso.fit(model.predict_proba(X[va])[:, 1], y[va])
+    iso.fit(p_va, y[va])
+    # subsample calibration pairs for Venn-Abers at inference time
+    rng = np.random.default_rng(C.GLOBAL_SEED)
+    idx = rng.choice(len(p_va), size=min(4000, len(p_va)), replace=False)
     return dict(model=model, iso=iso, columns=list(X.columns),
-                horizon=fb["horizon_min"])
+                horizon=fb["horizon_min"],
+                cal_scores=p_va[idx], cal_y=y[va][idx],
+                feature_quantiles=X.quantile([0.05, 0.5, 0.95]))
+
+
+def venn_abers_interval(cal_scores: np.ndarray, cal_y: np.ndarray,
+                        score: float) -> tuple:
+    """Inductive Venn-Abers probability interval [p0, p1] for one raw score.
+
+    Fits isotonic regression twice on the calibration set with the new point
+    appended once with label 0 and once with label 1; the two fitted values at
+    the new score bracket the true calibrated probability. Distribution-free.
+    """
+    lo_iso = IsotonicRegression(out_of_bounds="clip")
+    lo_iso.fit(np.append(cal_scores, score), np.append(cal_y, 0))
+    hi_iso = IsotonicRegression(out_of_bounds="clip")
+    hi_iso.fit(np.append(cal_scores, score), np.append(cal_y, 1))
+    p0 = float(lo_iso.predict([score])[0])
+    p1 = float(hi_iso.predict([score])[0])
+    return min(p0, p1), max(p0, p1)
 
 
 def save_artifacts(prod: Dict, path: str):

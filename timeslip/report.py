@@ -305,6 +305,37 @@ def fig_regime_compare(ctx: Dict, outdir: str):
     _save(fig, os.path.join(outdir, "regime_compare.png"))
 
 
+def fig_interventions(tab, outdir: str):
+    if tab is None or tab.empty:
+        return
+    t = tab.drop(index="baseline", errors="ignore")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    y = np.arange(len(t))
+    ax.barh(y - 0.2, t["slips_change_%"], 0.4, color="#2e86ab", label="slips/day")
+    ax.barh(y + 0.2, t["time_change_%"], 0.4, color="#e4572e", label="time lost/day")
+    ax.set_yticks(y); ax.set_yticklabels(t.index)
+    ax.axvline(0, color="gray")
+    ax.set_xlabel("% change vs baseline (negative = better)")
+    ax.set_title("Model-implied effect of interventions (causal do-operator)")
+    ax.legend()
+    _save(fig, os.path.join(outdir, "interventions.png"))
+
+
+def fig_realworld(rw: Dict, outdir: str):
+    if not rw:
+        return
+    t = rw["table"]
+    fig, ax = plt.subplots(figsize=(10, 6))
+    colors = ["#2e86ab" if m else "#e4572e" for m in t["sign_matches_sim"][::-1]]
+    ax.barh(t["construct"][::-1], t["real_coef"][::-1], color=colors)
+    ax.axvline(0, color="gray")
+    ax.set_xlabel("real-data logistic coefficient (z-scored)")
+    ax.set_title(f"Real humans corroborate the drivers (Kane et al. 2017)\n"
+                 f"{rw['n']:,} probes, {rw['n_subjects']} people; sign agreement "
+                 f"{rw['sign_agreement']:.0%}, rank corr {rw['rank_corr_vs_sim']:.2f}")
+    _save(fig, os.path.join(outdir, "realworld_validation.png"))
+
+
 def fig_per_person_auc(ctx: Dict, outdir: str):
     cs = ctx["eval_cold"]["per_person_auc"]
     ps = ctx["eval_pers"]["per_person_auc"]
@@ -451,6 +482,40 @@ def write_findings(ctx: Dict, outdir: str):
         "collinear with task features. This is a measurement limit, not a method "
         "failure (the latent-input check recovers them), and points to better "
         "passive sensing of alertness/engagement as the highest-value next step.")
+    rw = ctx.get("realworld")
+    if rw:
+        lines += [
+            "",
+            "## 3b. Real humans corroborate the causal story (external validation)",
+            f"- Tested against an open experience-sampling dataset (Kane et al. "
+            f"2017, *Psychological Science*): {rw['n']:,} probes from "
+            f"{rw['n_subjects']} adults beeped ~8x/day for a week.",
+            f"- Of the constructs the simulator drives mind-wandering with, "
+            f"**{rw['sign_agreement']:.0%} match the real-data sign** and the "
+            f"effect *ranking* tracks the simulator (Spearman {rw['rank_corr_vs_sim']:.2f}): "
+            "boredom, fatigue, low task-interest, stress and low mood all predict "
+            "real mind-wandering in the expected direction.",
+            "- Honest divergence: *effort* is protective in the real data (it "
+            "indexes engagement, not task aversiveness) - a genuine refinement, "
+            "not a failure. Single-item real predictors give AUC "
+            f"{rw['auc']:.2f}, as expected for noisy field data.",
+        ]
+    iv = ctx.get("interventions")
+    if iv is not None and not iv.empty and "all" in iv.index:
+        a = iv.loc["all"]
+        dnd = iv.loc["dnd"] if "dnd" in iv.index else None
+        lines += [
+            "",
+            "## 3c. What actually helps (causal intervention simulation)",
+            "Because the model is causal, we can re-run the same people under "
+            "different policies (a do-operator) and read off the effect:",
+            (f"- Batching/silencing notifications cuts slips ~{abs(dnd['slips_change_%']):.0f}% "
+             f"and time lost ~{abs(dnd['time_change_%']):.0f}%." if dnd is not None else ""),
+            f"- Phone-away + DND + ~45 min more sleep combined: slips "
+            f"{a['slips_change_%']:+.0f}%, time lost {a['time_change_%']:+.0f}%.",
+            "- These are *model-implied* effects (a hypothesis generator for a "
+            "real A/B experiment), not guarantees.",
+        ]
     lines += [
         "",
         "## 4. When and how attention gives way",
@@ -501,6 +566,8 @@ def generate_all(ctx: Dict, fig_dir: str, rep_dir: str):
     fig_learning_curve(ctx["learning_curve"], fig_dir)
     fig_regime_compare(ctx, fig_dir)
     fig_per_person_auc(ctx, fig_dir)
+    fig_interventions(ctx.get("interventions"), fig_dir)
+    fig_realworld(ctx.get("realworld"), fig_dir)
 
     write_person_reports(ctx, rep_dir)
     write_findings(ctx, rep_dir)

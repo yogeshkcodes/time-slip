@@ -17,10 +17,28 @@ The trick: we can't get ground-truth causes from real life (when someone grabs
 their phone, the true cause is unobserved). So we **simulate** detailed daily
 routines from an explicit *structural causal model* grounded in cognitive
 science, then show an explainable-ML + counterfactual pipeline — using only
-**self-loggable** features — recovers the generator's true causal structure.
+**self-loggable** features — recovers the generator's true causal structure. Then
+we close the loop with **real data**: an on-device tracker of your own computer
+use, and an **external check against a published human dataset** (Kane et al.
+2017, 274 adults) that *corroborates* the simulator's causal story.
 
 > Attention is becoming the scarce currency. Time Slip is about measuring its
 > exchange rate, person by person.
+
+## Real data, not just simulation
+- **`track_me.py`** — a zero-dependency, 100%-on-device tracker that logs your
+  real foreground app + idle time, reconstructing your actual focus spells,
+  task-switches and rabbit holes (`analyze_tracker.py`).
+- **`timeslip/realworld.py`** — validates the model's drivers against real
+  experience-sampling data from 274 people (~10k probes): **83% sign agreement,
+  rank-correlation 0.83**. Boredom, fatigue, low task-interest, stress and low
+  mood all predict real mind-wandering in the predicted direction.
+- **`whatif.py`** — type your current state, get your calibrated next-10-min slip
+  risk *with an uncertainty interval* (Venn–Abers) and the single best lever.
+- **`timeslip/interventions.py`** — a causal *do-operator*: re-runs the same
+  people under "phone away / notifications off / more sleep" and quantifies the
+  effect (combined: ~46% less time lost — model-implied, a hypothesis for a real
+  trial).
 
 ---
 
@@ -74,9 +92,12 @@ Distraction isn't one thing. The right lever is personal — see
 
 ```bash
 pip install -r requirements.txt
-python run_all.py            # ~2 min; full cohort study -> data, figures, reports, model
+python run_all.py            # ~2.5 min; cohort study + real-data validation + interventions
 python analyze_me.py         # analyse a self-logged routine (example if no file)
-python obsidian_sync.py "C:/path/to/Vault" --init   # log routines in Obsidian
+python track_me.py --minutes 90   # track your REAL computer use, then:
+python analyze_tracker.py    # behavioural focus/slip report from real data
+python whatif.py --boredom 4 --task deep_work --tot 40   # live risk + best lever
+python obsidian_sync.py "C:/path/to/Vault" --init        # log routines in Obsidian
 ```
 
 Then read **`outputs/reports/findings.md`** and browse `outputs/figures/`.
@@ -154,8 +175,11 @@ Obsidian. Re-run any time you add more days. See `TimeSlip/README.md` (created b
 
 ```
 Time Slip/
-├─ run_all.py                end-to-end pipeline (the simulation study)
+├─ run_all.py                end-to-end pipeline (study + real-data validation)
 ├─ analyze_me.py             analyse YOUR own logged routine
+├─ track_me.py               on-device real-time attention tracker (Windows)
+├─ analyze_tracker.py        behavioural report from tracked real data
+├─ whatif.py                 live slip-risk + best-lever recommender
 ├─ obsidian_sync.py          log routines in Obsidian, get a report back
 ├─ requirements.txt
 ├─ timeslip/
@@ -164,11 +188,14 @@ Time Slip/
 │  ├─ simulate.py            structural causal simulator (states → hazard → slips)
 │  ├─ features.py            self-loggable vs latent feature sets; risk windows
 │  ├─ model.py               recovery, hazard, oracle + logistic attribution model
-│  ├─ evaluate.py            cold-start/personalised regimes, calibration, curves, persistence
+│  ├─ evaluate.py            regimes, calibration, learning curve, Venn–Abers, persistence
 │  ├─ survival.py            Kaplan–Meier + discrete-time hazard + vigilance
 │  ├─ explain.py             SHAP + counterfactual fingerprints + validation
+│  ├─ interventions.py       causal do-operator: simulate policies, quantify effect
+│  ├─ realworld.py           external validation vs real human ESM data (Kane 2017)
+│  ├─ tracker.py             parse + analyse real tracker logs
 │  ├─ schema.py              self-logging schema for real data
-│  ├─ realdata.py            analyse a real person's logged routine
+│  ├─ realdata.py            analyse a real person's log (+ empirical-Bayes shrinkage)
 │  ├─ obsidian.py            parse vault logs + write report back into the vault
 │  └─ report.py              figures + per-person reports
 ├─ docs/

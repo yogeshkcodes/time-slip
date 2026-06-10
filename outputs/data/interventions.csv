@@ -1,0 +1,6 @@
+policy,slips_per_day,min_lost_per_day,phone_min_per_day,slips_change_%,time_change_%
+baseline,30.69,174.75,61.99,0.0,0.0
+phone_away,28.73,158.89,46.55,-6.39,-9.07
+dnd,18.21,101.35,23.68,-40.68,-42.0
+sleep_45m,30.72,175.14,62.21,0.12,0.22
+all,17.67,94.16,14.75,-42.44,-46.12

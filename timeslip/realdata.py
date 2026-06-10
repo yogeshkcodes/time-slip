@@ -186,8 +186,31 @@ def personal_model(d: pd.DataFrame, df: pd.DataFrame) -> Optional[Dict]:
                 n=int(len(y)), n_slips=int(y.sum()))
 
 
+SHRINKAGE_K = 25      # pseudo-slips: weight of the population prior
+
+
+def _population_prior() -> Optional[pd.DataFrame]:
+    """Population fingerprint stashed in the trained artifact, if available."""
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "outputs", "model", "timeslip_model.joblib")
+    if not os.path.exists(path):
+        return None
+    try:
+        import joblib
+        prod = joblib.load(path)
+        return prod.get("population_fingerprint")
+    except Exception:
+        return None
+
+
 def personal_fingerprint(model_res: Dict, d: pd.DataFrame) -> pd.DataFrame:
-    """Counterfactual cause shares from the person's fitted model."""
+    """Counterfactual cause shares from the person's fitted model.
+
+    With few logged slips a purely personal estimate is noisy, so we shrink it
+    toward the population fingerprint (empirical-Bayes style): the personal
+    weight is n_slips/(n_slips+K). With ~25 slips you are weighted 50/50; with
+    hundreds, the prior barely matters. The report shows the blend weight.
+    """
     pipe, X, y = model_res["model"], model_res["X"], model_res["y"]
     slip_rows = X[y == 1]
     if slip_rows.empty:
@@ -214,7 +237,20 @@ def personal_fingerprint(model_res: Dict, d: pd.DataFrame) -> pd.DataFrame:
     fp = pd.DataFrame(rows)
     tot = fp["reduction"].sum()
     fp["share"] = fp["reduction"] / tot if tot > 0 else 0.0
-    return fp.sort_values("share", ascending=False).reset_index(drop=True)
+
+    # empirical-Bayes shrinkage toward the population prior
+    prior = _population_prior()
+    n_slips = int(y.sum())
+    alpha = n_slips / (n_slips + SHRINKAGE_K)
+    fp["share_personal"] = fp["share"]
+    if prior is not None and not prior.empty:
+        pr = prior.set_index("cause")["share"]
+        fp["share"] = (alpha * fp["share"]
+                       + (1 - alpha) * fp["cause"].map(pr).fillna(0.0))
+        fp["share"] = fp["share"] / fp["share"].sum()
+    fp = fp.sort_values("share", ascending=False).reset_index(drop=True)
+    fp.attrs["alpha"] = alpha if (prior is not None and not prior.empty) else 1.0
+    return fp
 
 
 # --------------------------------------------------------------------------- #
@@ -309,6 +345,10 @@ def write_report(desc: Dict, model_res, fp, fig_dir: str, rep_path: str):
         L.append(f"- Personal risk model trained on your data "
                  f"(cross-validated AUC "
                  f"{model_res['auc']:.2f} — 0.50 is chance).")
+        alpha = fp.attrs.get("alpha", 1.0) if hasattr(fp, "attrs") else 1.0
+        if alpha < 1.0:
+            L.append(f"- Shares are shrunk toward the population fingerprint "
+                     f"(personal weight {alpha:.0%} — grows as you log more slips).")
         L.append("")
         L.append("| Cause | Share of your reducible slip risk |")
         L.append("|---|---|")

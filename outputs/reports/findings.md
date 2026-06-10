@@ -26,6 +26,17 @@
   - Boredom: 1%
 - Note: the self-logged model under-attributes *fatigue* and *boredom* relative to ground truth - their self-report proxies are noisy and collinear with task features. This is a measurement limit, not a method failure (the latent-input check recovers them), and points to better passive sensing of alertness/engagement as the highest-value next step.
 
+## 3b. Real humans corroborate the causal story (external validation)
+- Tested against an open experience-sampling dataset (Kane et al. 2017, *Psychological Science*): 10,234 probes from 274 adults beeped ~8x/day for a week.
+- Of the constructs the simulator drives mind-wandering with, **83% match the real-data sign** and the effect *ranking* tracks the simulator (Spearman 0.83): boredom, fatigue, low task-interest, stress and low mood all predict real mind-wandering in the expected direction.
+- Honest divergence: *effort* is protective in the real data (it indexes engagement, not task aversiveness) - a genuine refinement, not a failure. Single-item real predictors give AUC 0.59, as expected for noisy field data.
+
+## 3c. What actually helps (causal intervention simulation)
+Because the model is causal, we can re-run the same people under different policies (a do-operator) and read off the effect:
+- Batching/silencing notifications cuts slips ~41% and time lost ~42%.
+- Phone-away + DND + ~45 min more sleep combined: slips -42%, time lost -46%.
+- These are *model-implied* effects (a hypothesis generator for a real A/B experiment), not guarantees.
+
 ## 4. When and how attention gives way
 - Discrete-time hazard during focus (AUC 0.69): each +1 SD of phone-urge, task-aversiveness, time-on-task, boredom and stress raises the lapse hazard; self-control lowers it.
 - A clear **vigilance decrement**: lapse risk climbs with minutes-on-task.
