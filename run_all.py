@@ -186,6 +186,27 @@ def main():
 
     report.generate_all(ctx, FIG, REP)
 
+    # plain-English example: an Attention Account statement generated from one
+    # benchmark person's log, so the repo shows the narrative layer
+    try:
+        from timeslip import realdata as R, narrative as N
+        ex = R.make_example_log("P01", minutes=minutes)
+        ex = ex.sort_values(["date", "clock_min"]).reset_index(drop=True)
+        d_ex = R.prepare(ex)
+        desc_ex = R.descriptive(ex, d_ex)
+        mres_ex = R.personal_model(d_ex, ex)
+        fp_ex = (R.personal_fingerprint(mres_ex, d_ex)
+                 if mres_ex and mres_ex.get("enough") else None)
+        autop = N.per_slip_attribution(mres_ex, ex, d_ex)
+        acc = N.attention_account(ex, d_ex, desc_ex, mres_ex, fp_ex, autop)
+        with open(os.path.join(REP, "example_attention_account.md"), "w",
+                  encoding="utf-8") as f:
+            f.write("> Example statement generated from one benchmark person's "
+                    "log - run `python analyze_me.py my_log.csv` to get yours.\n\n"
+                    + acc)
+    except Exception as ex2:
+        print(f"      (example attention account skipped: {ex2})")
+
     print(f"\nDone in {time.time()-t0:.0f}s. Outputs in ./outputs/")
     print(f"  model   -> {MODEL}  (timeslip_model.joblib)")
     print(f"  reports -> {REP}  (start with findings.md)")

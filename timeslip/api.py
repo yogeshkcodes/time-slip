@@ -133,6 +133,7 @@ class TimeSlip:
         """Cause-share breakdown from a self-log (path or DataFrame)."""
         from . import realdata as R
         df = R.load_log(log) if isinstance(log, str) else log
+        df = df.sort_values(["date", "clock_min"]).reset_index(drop=True)
         d = R.prepare(df)
         mres = R.personal_model(d, df)
         if not (mres and mres.get("enough")):

@@ -245,6 +245,8 @@ def sync(vault: str) -> Dict:
     problems = S.validate_self_log(df)
     if problems:
         raise ValueError("Log problems:\n  - " + "\n  - ".join(problems))
+    # sort BEFORE prepare so features stay aligned with labels taken from df
+    df = df.sort_values(["date", "clock_min"]).reset_index(drop=True)
 
     d = R.prepare(df)
     desc = R.descriptive(df, d)
@@ -262,4 +264,14 @@ def sync(vault: str) -> Dict:
     report_path = os.path.join(base, "Time Slip Report.md")
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(md)
-    return dict(report=report_path, desc=desc, fingerprint=fp, n_rows=len(df))
+
+    # plain-English statement note (per-slip autopsies + weekly account)
+    from . import narrative as N
+    autopsy = N.per_slip_attribution(mres, df, d)
+    account = N.attention_account(df, d, desc, mres, fp, autopsy)
+    account_path = os.path.join(base, "Attention Account.md")
+    with open(account_path, "w", encoding="utf-8") as f:
+        f.write(account)
+
+    return dict(report=report_path, account=account_path, desc=desc,
+                fingerprint=fp, n_rows=len(df))

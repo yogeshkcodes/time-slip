@@ -47,8 +47,10 @@ def main():
         if not res["fingerprint"].empty:
             top = res["fingerprint"].iloc[0]
             print(f"  dominant trigger: {top['cause']} ({top['share']:.0%})")
-    print(f"\nDone. See {res['report']}")
-    print(f"Figures in {res['fig_dir']}  (me_when / me_why / me_fingerprint)")
+    print(f"\nDone.")
+    print(f"  Statement -> {res.get('account', '')}   (plain English, start here)")
+    print(f"  Report    -> {res['report']}")
+    print(f"  Figures   -> {res['fig_dir']}  (me_when / me_why / me_fingerprint)")
 
 
 if __name__ == "__main__":

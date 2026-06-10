@@ -372,6 +372,9 @@ def analyze(path: str, out_root: str) -> Dict:
     fig_dir = os.path.join(out_root, "me")
     os.makedirs(fig_dir, exist_ok=True)
     df = load_log(path)
+    # sort BEFORE prepare so features (built on the sorted frame) stay aligned
+    # with labels taken from df
+    df = df.sort_values(["date", "clock_min"]).reset_index(drop=True)
     d = prepare(df)
     desc = descriptive(df, d)
     mres = personal_model(d, df)
@@ -385,19 +388,32 @@ def analyze(path: str, out_root: str) -> Dict:
     _fig_fingerprint(fp, auc, os.path.join(fig_dir, "me_fingerprint.png"))
     rep_path = os.path.join(fig_dir, "report_me.md")
     write_report(desc, mres, fp, fig_dir, rep_path)
-    return dict(desc=desc, model=mres, fingerprint=fp, report=rep_path, fig_dir=fig_dir)
+
+    # plain-English layer: per-slip autopsies + the weekly Attention Account
+    from . import narrative as N
+    autopsy = N.per_slip_attribution(mres, df, d)
+    account = N.attention_account(df, d, desc, mres, fp, autopsy)
+    acc_path = os.path.join(fig_dir, "attention_account.md")
+    with open(acc_path, "w", encoding="utf-8") as f:
+        f.write(account)
+
+    return dict(desc=desc, model=mres, fingerprint=fp, report=rep_path,
+                account=acc_path, autopsy=autopsy, fig_dir=fig_dir)
 
 
 # --------------------------------------------------------------------------- #
-def make_example_log(pid: str = "P01", interval: int = 20) -> pd.DataFrame:
+def make_example_log(pid: str = "P01", interval: int = 20,
+                     minutes: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     """Build a realistic *filled* self-log from the simulator, to test/demo with.
 
     Downsamples one simulated person to one row every ``interval`` minutes and
     converts latent states to 1-5 Likert self-reports, mimicking what a real
-    person would actually type into the template.
+    person would actually type into the template. Pass ``minutes`` to reuse an
+    existing simulation instead of re-running it.
     """
-    from .simulate import simulate_all
-    minutes, _, _ = simulate_all()
+    if minutes is None:
+        from .simulate import simulate_all
+        minutes, _, _ = simulate_all()
     pm = minutes[minutes["pid"] == pid].sort_values(["day", "clock_min"]).copy()
 
     def lk(x):                                   # 0-1 latent -> 1-5 Likert

@@ -140,11 +140,18 @@ def main():
     rep = os.path.join(REPORT_DIR, "report_tracker.md")
     write_report(summary, slips, rep)
 
+    # plain-English statement (no charts needed)
+    from timeslip import narrative as N
+    acc = os.path.join(REPORT_DIR, "attention_account.md")
+    with open(acc, "w", encoding="utf-8") as f:
+        f.write(N.attention_account_tracker(summary, slips, spells))
+
     print(f"Tracked {summary['hours_tracked']:.1f} h over {summary['n_days']} day(s): "
           f"{summary['n_slips']} behavioural slips "
           f"(~{summary['time_lost_per_day']:.0f} min/day lost), "
           f"median focus {summary['median_focus_min']:.0f} min.")
-    print(f"Report -> {rep}")
+    print(f"Report    -> {rep}")
+    print(f"Statement -> {acc}   (plain English, start here)")
 
 
 if __name__ == "__main__":

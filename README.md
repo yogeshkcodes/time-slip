@@ -23,7 +23,7 @@ most** — and it backs every claim with validation instead of vibes.
 |---|---|
 | `python track_me.py` | **Tracks your real computer use** (foreground app + idle, 100% on-device, nothing uploaded) |
 | `python analyze_tracker.py` | Your real focus spells, slips, rabbit holes, vigilance curve — from actual behaviour, no logging effort |
-| `python analyze_me.py my_log.csv` | Your personal **slip fingerprint**: what share of your lapses each cause drives |
+| `python analyze_me.py my_log.csv` | Your personal **slip fingerprint** + a plain-English **Attention Account** statement with a one-line cause autopsy for every slip |
 | `python obsidian_sync.py "<vault>"` | Log your routine in Obsidian daily notes; a report with charts is written back into the vault |
 | `python whatif.py --boredom 4 --tot 40` | **Live risk right now** with an uncertainty interval + the single best lever to pull |
 | `python whatif.py --policy` | Causal estimates of week-long interventions (phone away / DND / more sleep) |
@@ -130,6 +130,16 @@ elevated at slip moments, and — once you have ≥30 rows / ≥6 slips — your
 personal fingerprint (cross-validated, shrunk toward the population prior while
 your data is small).
 
+The headline output is the **Attention Account** (`outputs/me/attention_account.md`,
+also written into your Obsidian vault): a weekly statement in plain English — your
+balance (time lost), the week's worst slips as one-line stories *with a per-slip
+cause breakdown* ("Tue 13:45 — during deep_work, 20 min in: slipped to phone for
+18 min. Drivers: phone pull 75%, task aversiveness 18%."), your cause split in
+plain words, the patterns that matter (riskiest hour, how many minutes into a task
+you typically break), and **one prescribed experiment for next week** with a
+measurement plan. No charts required. See
+`outputs/reports/example_attention_account.md` for a full example.
+
 ## Embed it in your own project — `timeslip.api`
 
 A small, stable, JSON-friendly facade so any app (a focus timer, a journaling
@@ -173,6 +183,7 @@ Time Slip/
 ├─ requirements.txt
 ├─ timeslip/
 │  ├─ api.py                 embeddable facade (risk / fingerprint / tracker)
+│  ├─ narrative.py           per-slip autopsies + plain-English Attention Account
 │  ├─ falsify.py             refutation suite (negative controls, dose-response)
 │  ├─ tracker.py             parse + analyse real tracker logs
 │  ├─ realworld.py           validation against real human ESM data (Kane 2017)
