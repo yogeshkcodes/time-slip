@@ -34,7 +34,9 @@
 ## Next week's experiment (one change only)
 - Your dominant cause is **Phone pull**, so: Phone in another room (not pocket, not desk) during your two longest focus blocks each day; notifications batched to 3 fixed times.
 - **How we'll know it worked:** phone-channel slips/day and minutes lost vs this week.
-- Change nothing else, keep logging, and next week's statement will show the before/after.
+- Change nothing else and keep logging. To start measuring it:
+  `python experiment.py accept my_log.csv`  *(or `experiment.py start --cause "Phone pull" --metric phone_min_per_day --change "..."`)*
+- Once a few intervention days are logged, the statement will report the **measured** before/after on your own data.
 
 ---
 *Plain-English by design. Every number comes from your own log; the cause split is computed by your personal model.*

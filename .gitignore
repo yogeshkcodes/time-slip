@@ -34,6 +34,8 @@ outputs/tracker_report/
 outputs/tracker_demo/
 outputs/external/
 outputs/me/
+outputs/experiments.json
+outputs/_exp_test/
 
 # Keep the small analysis outputs, figures, reports and the trained production
 # model (outputs/model/) tracked so the repo is browsable and usable on GitHub

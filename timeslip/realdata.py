@@ -389,16 +389,23 @@ def analyze(path: str, out_root: str) -> Dict:
     rep_path = os.path.join(fig_dir, "report_me.md")
     write_report(desc, mres, fp, fig_dir, rep_path)
 
-    # plain-English layer: per-slip autopsies + the weekly Attention Account
+    # N-of-1 experiments: evaluate any the user has registered against this log
     from . import narrative as N
+    from . import experiments as E
+    reg_path = os.path.join(out_root, "experiments.json")
+    results = E.evaluate_active(df, reg_path)
+    exp_result = results[-1] if results else None      # most recently started
+
+    # plain-English layer: per-slip autopsies + the weekly Attention Account
     autopsy = N.per_slip_attribution(mres, df, d)
-    account = N.attention_account(df, d, desc, mres, fp, autopsy)
+    account = N.attention_account(df, d, desc, mres, fp, autopsy, exp_result)
     acc_path = os.path.join(fig_dir, "attention_account.md")
     with open(acc_path, "w", encoding="utf-8") as f:
         f.write(account)
 
     return dict(desc=desc, model=mres, fingerprint=fp, report=rep_path,
-                account=acc_path, autopsy=autopsy, fig_dir=fig_dir)
+                account=acc_path, autopsy=autopsy, experiment=exp_result,
+                fig_dir=fig_dir)
 
 
 # --------------------------------------------------------------------------- #

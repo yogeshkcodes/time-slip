@@ -265,13 +265,19 @@ def sync(vault: str) -> Dict:
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(md)
 
-    # plain-English statement note (per-slip autopsies + weekly account)
+    # N-of-1 experiments registered for this vault
     from . import narrative as N
+    from . import experiments as E
+    reg_path = os.path.join(base, "experiments.json")
+    results = E.evaluate_active(df, reg_path)
+    exp_result = results[-1] if results else None
+
+    # plain-English statement note (per-slip autopsies + weekly account)
     autopsy = N.per_slip_attribution(mres, df, d)
-    account = N.attention_account(df, d, desc, mres, fp, autopsy)
+    account = N.attention_account(df, d, desc, mres, fp, autopsy, exp_result)
     account_path = os.path.join(base, "Attention Account.md")
     with open(account_path, "w", encoding="utf-8") as f:
         f.write(account)
 
     return dict(report=report_path, account=account_path, desc=desc,
-                fingerprint=fp, n_rows=len(df))
+                fingerprint=fp, experiment=exp_result, n_rows=len(df))

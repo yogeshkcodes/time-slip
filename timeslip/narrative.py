@@ -42,6 +42,12 @@ CAUSE_MEANING = {
     "Time-on-task (vigilance)": "focus fatigue from long unbroken stretches",
 }
 
+# dominant cause -> the metric an N-of-1 experiment should track for it
+CAUSE_METRIC = {
+    "Phone pull": "phone_min_per_day",
+    "Time-on-task (vigilance)": "slips_per_day",
+}   # everything else defaults to slips_per_day
+
 # dominant cause -> (experiment to run next week, how it will be measured)
 EXPERIMENTS = {
     "Phone pull": (
@@ -189,7 +195,8 @@ def _week_over_week(df: pd.DataFrame) -> Optional[str]:
 
 def attention_account(df: pd.DataFrame, d: pd.DataFrame, desc: Dict,
                       model_res, fp: pd.DataFrame,
-                      autopsy: Optional[pd.DataFrame]) -> str:
+                      autopsy: Optional[pd.DataFrame],
+                      experiment_result: Optional[Dict] = None) -> str:
     """Build the plain-English weekly statement (markdown)."""
     days = desc.get("n_days", df["date"].nunique() if "date" in df else 1)
     n_slips = int(desc.get("n_slips", 0))
@@ -199,6 +206,11 @@ def attention_account(df: pd.DataFrame, d: pd.DataFrame, desc: Dict,
     span = f"{dates[0]} to {dates[-1]}" if dates else "your log"
 
     L = [f"# Attention Account - {span}", ""]
+
+    # ---- last experiment's measured result (the N-of-1 payoff) ----
+    if experiment_result and experiment_result.get("ok"):
+        from .experiments import narrative_line
+        L += ["## Your running experiment", "- " + narrative_line(experiment_result), ""]
 
     # ---- balance ----
     L.append("## Balance")
@@ -276,12 +288,18 @@ def attention_account(df: pd.DataFrame, d: pd.DataFrame, desc: Dict,
     if fp is not None and len(fp):
         dom = fp.iloc[0]["cause"]
         exp, measure = EXPERIMENTS.get(dom, (None, None))
-        if exp:
+        if exp and not (experiment_result and experiment_result.get("ok")
+                        and experiment_result.get("verdict") == "keep logging"):
+            metric = CAUSE_METRIC.get(dom, "slips_per_day")
             L += ["", "## Next week's experiment (one change only)",
                   f"- Your dominant cause is **{dom}**, so: {exp}",
                   f"- **How we'll know it worked:** {measure}.",
-                  "- Change nothing else, keep logging, and next week's "
-                  "statement will show the before/after."]
+                  "- Change nothing else and keep logging. To start measuring it:",
+                  f"  `python experiment.py accept my_log.csv`  *(or "
+                  f"`experiment.py start --cause \"{dom}\" --metric {metric} "
+                  f"--change \"...\"`)*",
+                  "- Once a few intervention days are logged, the statement will "
+                  "report the **measured** before/after on your own data."]
 
     L += ["", "---",
           "*Plain-English by design. Every number comes from your own log; "

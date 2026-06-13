@@ -173,7 +173,31 @@ exchange rate is personal.*
 
 ---
 
-## 5. Mapping to the code
+## 5. From population model to single-subject proof (N-of-1)
+
+A population model can tell you *what tends to cause lapses*; it cannot tell you
+that a change **worked for you**. Time Slip closes that gap with single-subject
+(N-of-1) experimentation, long established in clinical and behavioural science as
+the strongest design for individual-level causal claims:
+
+- The fingerprint prescribes **one** change targeting the dominant cause.
+- Logged days split into a **baseline** arm (before) and an **intervention** arm
+  (after the change).
+- Effect is tested with a **weekday-stratified permutation test**: each weekday's
+  mean is removed before permuting arm labels, so a difference in the days-of-week
+  covered by each arm cannot masquerade as an effect. The p-value is exact to the
+  permutation set (no normality assumed).
+- A **bootstrap 95% CI** reports the plausible range of the effect, and a
+  **minimum-detectable-effect** calculation states the smallest change the
+  available days could have revealed — so "no change" is never confused with
+  "under-powered". A verdict of *improved/worsened* requires p<0.05 **and**
+  enough days per arm.
+
+This makes every user a small controlled study of one, and turns the project's
+benchmark-validated mechanism into evidence on real individuals — the bridge
+from "method works" to "it worked for this person."
+
+## 6. Mapping to the code
 
 | Concept | File |
 |---|---|
@@ -184,6 +208,10 @@ exchange rate is personal.*
 | Risk model, baselines, coefficient recovery | `timeslip/model.py` |
 | Kaplan–Meier + discrete-time hazard + vigilance | `timeslip/survival.py` |
 | SHAP + counterfactual fingerprints + validation | `timeslip/explain.py` |
+| Real-human corroboration (Kane 2017 ESM) | `timeslip/realworld.py` |
+| Refutation / falsification suite | `timeslip/falsify.py` |
+| Per-slip autopsies + Attention Account | `timeslip/narrative.py` |
+| N-of-1 experiment engine | `timeslip/experiments.py` |
 
 The citations above are given by theme rather than as a formatted bibliography;
 `docs/PAPER_OUTLINE.md` lists the works to cite formally in a manuscript.

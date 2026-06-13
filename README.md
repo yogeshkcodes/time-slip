@@ -27,6 +27,7 @@ most** — and it backs every claim with validation instead of vibes.
 | `python obsidian_sync.py "<vault>"` | Log your routine in Obsidian daily notes; a report with charts is written back into the vault |
 | `python whatif.py --boredom 4 --tot 40` | **Live risk right now** with an uncertainty interval + the single best lever to pull |
 | `python whatif.py --policy` | Causal estimates of week-long interventions (phone away / DND / more sleep) |
+| `python experiment.py accept my_log.csv` | **Run an N-of-1 experiment on yourself** — register the prescribed change, then it measures the real effect on your own data |
 | `python run_all.py` | Reproduce the full research study (validation + figures + paper-ready reports) |
 
 ## The science behind it
@@ -65,6 +66,16 @@ And because the model is causal, it supports **intervention simulation** (a
 do-operator): re-running the same people under "notifications batched + phone
 away + slightly more sleep" cuts time lost to slips by **~46%** — a
 model-implied effect, i.e. a quantified hypothesis ready for a real A/B trial.
+
+3. **Your own n-of-1 evidence.** The loop doesn't stop at a model prediction.
+   `experiment.py` turns each prescribed change into a **single-subject
+   experiment on you**: it splits your logged days into before/after, then
+   measures the effect with a **weekday-controlled permutation test**, a
+   **bootstrap 95% CI**, and a **minimum-detectable-effect** check so it never
+   claims a result on thin data. Your statement then reads *"it cut your
+   slips/day by 43% (p<0.001, CI [−15, −7]) — your data, not a model
+   prediction."* Every user becomes their own controlled study; that is the
+   feature that converts "validated method" into personal proof.
 Risk predictions ship with **Venn–Abers uncertainty intervals**, and population
 fingerprints with bootstrap confidence bands — so every number has an error bar.
 
@@ -178,12 +189,14 @@ Time Slip/
 ├─ analyze_tracker.py        behavioural report from tracked real data
 ├─ analyze_me.py             analyse YOUR own logged routine
 ├─ whatif.py                 live slip-risk + best-lever recommender
+├─ experiment.py             register + measure an N-of-1 experiment on yourself
 ├─ obsidian_sync.py          log routines in Obsidian, get a report back
 ├─ run_all.py                reproduce the full research study
 ├─ requirements.txt
 ├─ timeslip/
 │  ├─ api.py                 embeddable facade (risk / fingerprint / tracker)
 │  ├─ narrative.py           per-slip autopsies + plain-English Attention Account
+│  ├─ experiments.py         N-of-1 engine: permutation test + bootstrap CI + MDE
 │  ├─ falsify.py             refutation suite (negative controls, dose-response)
 │  ├─ tracker.py             parse + analyse real tracker logs
 │  ├─ realworld.py           validation against real human ESM data (Kane 2017)
